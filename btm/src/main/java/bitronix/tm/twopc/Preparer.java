@@ -1,44 +1,44 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.twopc;
 
 import bitronix.tm.BitronixTransaction;
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.internal.BitronixRollbackException;
-import bitronix.tm.internal.BitronixSystemException;
-import bitronix.tm.internal.XAResourceHolderState;
-import bitronix.tm.internal.XAResourceManager;
+import bitronix.tm.utils.Decoder;
+import bitronix.tm.internal.*;
 import bitronix.tm.twopc.executor.Executor;
 import bitronix.tm.twopc.executor.Job;
-import bitronix.tm.utils.Decoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.transaction.RollbackException;
 import javax.transaction.Status;
+import javax.transaction.RollbackException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Phase 1 Prepare logic engine.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public final class Preparer extends AbstractPhaseEngine {
 
@@ -68,7 +68,7 @@ public final class Preparer extends AbstractPhaseEngine {
             if (TransactionManagerServices.getConfiguration().isWarnAboutZeroResourceTransaction())
                 log.warn("executing transaction with 0 enlisted resource");
             else
-                if (log.isDebugEnabled()) { log.debug("0 resource enlisted, no prepare needed"); }
+                if (log.isDebugEnabled()) log.debug("0 resource enlisted, no prepare needed");
 
             transaction.setStatus(Status.STATUS_PREPARED);
             return preparedResources;
@@ -79,7 +79,7 @@ public final class Preparer extends AbstractPhaseEngine {
             XAResourceHolderState resourceHolder = resourceManager.getAllResources().get(0);
 
             preparedResources.add(resourceHolder);
-            if (log.isDebugEnabled()) { log.debug("1 resource enlisted, no prepare needed (1PC)"); }
+            if (log.isDebugEnabled()) log.debug("1 resource enlisted, no prepare needed (1PC)");
             transaction.setStatus(Status.STATUS_PREPARED);
             return preparedResources;
         }
@@ -92,7 +92,7 @@ public final class Preparer extends AbstractPhaseEngine {
         }
 
         transaction.setStatus(Status.STATUS_PREPARED);
-        if (log.isDebugEnabled()) { log.debug("successfully prepared " + preparedResources.size() + " resource(s)"); }
+        if (log.isDebugEnabled()) log.debug("successfully prepared " + preparedResources.size() + " resource(s)");
         return Collections.unmodifiableList(preparedResources);
     }
 
@@ -132,12 +132,10 @@ public final class Preparer extends AbstractPhaseEngine {
                     " threw unexpected exception", phaseException);
     }
 
-    @Override
     protected Job createJob(XAResourceHolderState xaResourceHolderState) {
         return new PrepareJob(xaResourceHolderState);
     }
 
-    @Override
     protected boolean isParticipating(XAResourceHolderState xaResourceHolderState) {
         return true;
     }
@@ -148,18 +146,17 @@ public final class Preparer extends AbstractPhaseEngine {
             super(resourceHolder);
         }
 
-        @Override
         public void execute() {
             try {
                 XAResourceHolderState resourceHolder = getResource();
-                if (log.isDebugEnabled()) { log.debug("preparing resource " + resourceHolder); }
+                if (log.isDebugEnabled()) log.debug("preparing resource " + resourceHolder);
 
                 int vote = resourceHolder.getXAResource().prepare(resourceHolder.getXid());
                 if (vote != XAResource.XA_RDONLY) {
                     preparedResources.add(resourceHolder);
                 }
 
-                if (log.isDebugEnabled()) { log.debug("prepared resource " + resourceHolder + " voted " + Decoder.decodePrepareVote(vote)); }
+                if (log.isDebugEnabled()) log.debug("prepared resource " + resourceHolder + " voted " + Decoder.decodePrepareVote(vote));
             } catch (RuntimeException ex) {
                 runtimeException = ex;
             } catch (XAException ex) {
@@ -167,7 +164,6 @@ public final class Preparer extends AbstractPhaseEngine {
             }
         }
 
-        @Override
         public String toString() {
             return "a PrepareJob with " + getResource();
         }

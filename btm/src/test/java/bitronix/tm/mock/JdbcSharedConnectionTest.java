@@ -1,55 +1,60 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.mock;
 
-import bitronix.tm.BitronixTransactionManager;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.resource.jdbc.PooledConnectionProxy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.transaction.Transaction;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.util.ArrayList;
 
+import javax.transaction.*;
+
+import org.slf4j.*;
+
+import bitronix.tm.*;
+import bitronix.tm.resource.jdbc.JdbcConnectionHandle;
+
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
     private final static Logger log = LoggerFactory.getLogger(NewJdbcProperUsageMockTest.class);
 
     public void testSharedConnectionMultithreaded() throws Exception {
-        if (log.isDebugEnabled()) { log.debug("*** Starting testSharedConnectionMultithreaded: getting TM"); }
+        if (log.isDebugEnabled()) log.debug("*** getting TM");
         final BitronixTransactionManager tm = TransactionManagerServices.getTransactionManager();
         tm.setTransactionTimeout(120);
 
-        if (log.isDebugEnabled()) { log.debug("*** before begin"); }
+        if (log.isDebugEnabled()) log.debug("*** before begin");
         tm.begin();
-        if (log.isDebugEnabled()) { log.debug("*** after begin"); }
+        if (log.isDebugEnabled()) log.debug("*** after begin");
 
         final Transaction suspended = tm.suspend();
 
-        final ArrayList<Connection> twoConnections = new ArrayList<Connection>();
+        final ArrayList twoConnections = new ArrayList();
         Thread thread1 = new Thread() {
-            @Override
         	public void run() {
         		try {
 					tm.resume(suspended);
-			        if (log.isDebugEnabled()) { log.debug("*** getting connection from DS1"); }
+			        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
 			        Connection connection = poolingDataSource1.getConnection();
 			        connection.createStatement();
 			        twoConnections.add(connection);
@@ -63,11 +68,10 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
         thread1.join();
 
         Thread thread2 = new Thread() {
-            @Override
         	public void run() {
         		try {
 					tm.resume(suspended);
-			        if (log.isDebugEnabled()) { log.debug("*** getting connection from DS1"); }
+			        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
 			        Connection connection = poolingDataSource1.getConnection();
 			        connection.createStatement();
 			        twoConnections.add(connection);
@@ -81,32 +85,32 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
         thread2.start();
         thread2.join();
 
-        PooledConnectionProxy handle1 = (PooledConnectionProxy) twoConnections.get(0);
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) twoConnections.get(1);
-        assertNotSame(handle1.getProxiedDelegate(), handle2.getProxiedDelegate());
+        JdbcConnectionHandle handle1 = (JdbcConnectionHandle) Proxy.getInvocationHandler(twoConnections.get(0));
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(twoConnections.get(1));
+        assertNotSame(handle1.getConnection(), handle2.getConnection());
 
     }
 
     public void testUnSharedConnection() throws Exception {
-        if (log.isDebugEnabled()) { log.debug("*** Starting testUnSharedConnection: getting TM"); }
+        if (log.isDebugEnabled()) log.debug("*** getting TM");
         BitronixTransactionManager tm = TransactionManagerServices.getTransactionManager();
         tm.setTransactionTimeout(120);
 
-        if (log.isDebugEnabled()) { log.debug("*** before begin"); }
+        if (log.isDebugEnabled()) log.debug("*** before begin");
         tm.begin();
-        if (log.isDebugEnabled()) { log.debug("*** after begin"); }
+        if (log.isDebugEnabled()) log.debug("*** after begin");
 
-        if (log.isDebugEnabled()) { log.debug("*** getting connection from DS2"); }
+        if (log.isDebugEnabled()) log.debug("*** getting connection from DS2");
         Connection connection1 = poolingDataSource2.getConnection();
         // createStatement causes enlistment
         connection1.createStatement();
 
-        if (log.isDebugEnabled()) { log.debug("*** getting second connection from DS2"); }
+        if (log.isDebugEnabled()) log.debug("*** getting second connection from DS2");
         Connection connection2 = poolingDataSource2.getConnection();
 
-        PooledConnectionProxy handle1 = (PooledConnectionProxy) connection1;
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) connection2;
-        assertNotSame(handle1.getProxiedDelegate(), handle2.getProxiedDelegate());
+        JdbcConnectionHandle handle1 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
+        assertNotSame(handle1.getConnection(), handle2.getConnection());
 
         connection1.close();
         connection2.close();
@@ -116,17 +120,17 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
 
     public void testSharedConnectionInLocalTransaction() throws Exception {
 
-        if (log.isDebugEnabled()) { log.debug("*** Starting testSharedConnectionInLocalTransaction: getting connection from DS1"); }
+        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
         Connection connection1 = poolingDataSource1.getConnection();
         // createStatement causes enlistment
         connection1.createStatement();
 
-        if (log.isDebugEnabled()) { log.debug("*** getting second connection from DS1"); }
+        if (log.isDebugEnabled()) log.debug("*** getting second connection from DS1");
         Connection connection2 = poolingDataSource1.getConnection();
 
-        PooledConnectionProxy handle1 = (PooledConnectionProxy) connection1;
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) connection2;
-        assertNotSame(handle1.getProxiedDelegate(), handle2.getProxiedDelegate());
+        JdbcConnectionHandle handle1 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
+        assertNotSame(handle1.getConnection(), handle2.getConnection());
 
         connection1.close();
         connection2.close();
@@ -134,40 +138,40 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
 
     public void testUnSharedConnectionInLocalTransaction() throws Exception {
 
-        if (log.isDebugEnabled()) { log.debug("*** Starting testUnSharedConnectionInLocalTransaction: getting connection from DS2"); }
+        if (log.isDebugEnabled()) log.debug("*** getting connection from DS2");
         Connection connection1 = poolingDataSource2.getConnection();
         // createStatement causes enlistment
         connection1.createStatement();
 
-        if (log.isDebugEnabled()) { log.debug("*** getting second connection from DS2"); }
+        if (log.isDebugEnabled()) log.debug("*** getting second connection from DS2");
         Connection connection2 = poolingDataSource2.getConnection();
 
-        PooledConnectionProxy handle1 = (PooledConnectionProxy) connection1;
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) connection2;
-        assertNotSame(handle1.getProxiedDelegate(), handle2.getProxiedDelegate());
+        JdbcConnectionHandle handle1 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
+        assertNotSame(handle1.getConnection(), handle2.getConnection());
 
         connection1.close();
         connection2.close();
     }
 
     public void testSharedConnectionInGlobal() throws Exception {
-        if (log.isDebugEnabled()) { log.debug("*** testSharedConnectionInGlobal: Starting getting TM"); }
+        if (log.isDebugEnabled()) log.debug("*** getting TM");
         BitronixTransactionManager tm = TransactionManagerServices.getTransactionManager();
         tm.setTransactionTimeout(120);
 
-        if (log.isDebugEnabled()) { log.debug("*** before begin"); }
+        if (log.isDebugEnabled()) log.debug("*** before begin");
         tm.begin();
-        if (log.isDebugEnabled()) { log.debug("*** after begin"); }
+        if (log.isDebugEnabled()) log.debug("*** after begin");
 
-        if (log.isDebugEnabled()) { log.debug("*** getting connection from DS1"); }
+        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
         Connection connection1 = poolingDataSource1.getConnection();
 
-        if (log.isDebugEnabled()) { log.debug("*** getting second connection from DS1"); }
+        if (log.isDebugEnabled()) log.debug("*** getting second connection from DS1");
         Connection connection2 = poolingDataSource1.getConnection();
 
-        PooledConnectionProxy handle1 = (PooledConnectionProxy) connection1;
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) connection2;
-        assertSame(handle1.getProxiedDelegate(), handle2.getProxiedDelegate());
+        JdbcConnectionHandle handle1 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
+        assertSame(handle1.getConnection(), handle2.getConnection());
 
         connection1.close();
         connection2.close();

@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.internal;
 
@@ -20,76 +25,45 @@ import bitronix.tm.TransactionManagerServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Transactional context of a thread. It contains both the active transaction (if any) and all default parameters
  * that a transaction running on a thread must inherit.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class ThreadContext {
 
     private final static Logger log = LoggerFactory.getLogger(ThreadContext.class);
 
     private volatile BitronixTransaction transaction;
-    private volatile int timeout = TransactionManagerServices.getConfiguration().getDefaultTransactionTimeout();;
-
-    private static final ThreadLocal<ThreadContext> threadContext = new ThreadLocal<ThreadContext>() {
-        @Override
-        protected ThreadContext initialValue() {
-            return new ThreadContext();
-        }
-    };
+    private volatile int timeout = TransactionManagerServices.getConfiguration().getDefaultTransactionTimeout();
+    private final Map<Object, Object> resources = Collections.synchronizedMap(new HashMap<Object, Object>());
 
     /**
-     * Private constructor.
-     */
-    private ThreadContext() {
-        // Can only be constructed from initialValue() above.
-    }
-
-    /**
-     * Get the ThreadContext thread local value for the calling thread. This is
-     * the only way to access the ThreadContext. The get() call will
-     * automatically construct a ThreadContext if this thread doesn't have one
-     * (see initialValue() above).
-     *
-     * @return the calling thread's ThreadContext
-     */
-    public static ThreadContext getThreadContext() {
-        return threadContext.get();
-    }
-
-    /**
-     * Return the transaction linked with this ThreadContext.
-     *
-     * @return the transaction linked to this ThreadContext or null if there is none.
+     * Return the transaction linked with this thread context.
+     * @return the transaction linked to this thread context or null if there is none.
      */
     public BitronixTransaction getTransaction() {
         return transaction;
     }
 
     /**
-     * Link a transaction with this ThreadContext.
-     *
+     * Link a transaction with this thead context.
      * @param transaction the transaction to link.
      */
     public void setTransaction(BitronixTransaction transaction) {
         if (transaction == null)
             throw new IllegalArgumentException("transaction parameter cannot be null");
-        if (log.isDebugEnabled()) { log.debug("assigning <" + transaction + "> to <" + this + ">"); }
+        if (log.isDebugEnabled()) log.debug("assigning <" + transaction + "> to <" + this + ">");
         this.transaction = transaction;
     }
 
     /**
-     * Clean the transaction from this ThreadContext
-     */
-    public void clearTransaction() {
-        transaction = null;
-    }
-
-    /**
      * Return this context's default timeout.
-     *
      * @return this context's default timeout.
      */
     public int getTimeout() {
@@ -97,31 +71,35 @@ public class ThreadContext {
     }
 
     /**
-     * Set this context's default timeout. All transactions started by the
-     * thread linked to this context will get this value as their default
-     * timeout.
-     *
+     * Set this context's default timeout. All transactions started by the thread linked to this context will get
+     * this value as their default timeout.
      * @param timeout the new default timeout value in seconds.
      */
     public void setTimeout(int timeout) {
         if (timeout == 0) {
             int defaultValue = TransactionManagerServices.getConfiguration().getDefaultTransactionTimeout();
-            if (log.isDebugEnabled()) { log.debug("resetting default timeout of thread context to default value of " + defaultValue + "s"); }
+            if (log.isDebugEnabled()) log.debug("resetting default timeout of thread context to default value of " + defaultValue + "s");
             this.timeout = defaultValue;
         }
-        else {
-            if (log.isDebugEnabled()) { log.debug("changing default timeout of thread context to " + timeout + "s"); }
+        else {    
+            if (log.isDebugEnabled()) log.debug("changing default timeout of thread context to " + timeout + "s");
             this.timeout = timeout;
         }
     }
 
     /**
+     * Get this context's resources, in the JTA 1.1 TransactionSynchronizationRegistry sense.
+     * @return this context's resources.
+     */
+    public Map<Object, Object> getResources() {
+        return resources;
+    }
+
+    /**
      * Return a human-readable representation.
-     *
      * @return a human-readable representation.
      */
-    @Override
     public String toString() {
-        return "a ThreadContext (" + System.identityHashCode(this) + ") with transaction " + transaction + ", default timeout " + timeout + "s";
+        return "a ThreadContext with transaction " + transaction + ", default timeout " + timeout + "s";
     }
 }

@@ -1,40 +1,42 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Last Recently Used PreparedStatement cache with eviction listeners
  * support implementation.
  *
  *
- * @author Ludovic Orban
- * @author Brett Wooldridge
+ * @author lorban, brettw
  */
 public class LruStatementCache {
 
@@ -42,7 +44,7 @@ public class LruStatementCache {
 
     /**
      * The <i>target</i> maxSize of the cache.  The cache may drift slightly
-     * higher in size in the case that every statement in the cache is
+     * higher in size in the case that every statement in the cache is 
      * in use and therefore nothing can be evicted.  But eventually
      * (probably quickly) the cache will return to maxSize.
      */
@@ -61,13 +63,13 @@ public class LruStatementCache {
      *   completes).
      * </pre>
      */
-    private final LinkedHashMap<CacheKey, StatementTracker> cache;
+    private final LinkedHashMap<JdbcPreparedStatementHandle, StatementTracker> cache;
 
     /**
      * A list of listeners concerned with prepared statement cache
      * evictions.
      */
-    private final List<LruEvictionListener<PreparedStatement>> evictionListeners;
+    private final List<LruEvictionListener> evictionListners;
 
     /**
      * See the LinkedHashMap documentation.  We maintain our own size
@@ -78,17 +80,10 @@ public class LruStatementCache {
      */
     private int size;
 
-    /**
-     * A flag that is set during clear operations to prevent statements that
-     * are closing from coming back into the cache.
-     */
-    private AtomicBoolean clearInProgress;
-
     public LruStatementCache(int maxSize) {
         this.maxSize = maxSize;
-        cache = new LinkedHashMap<CacheKey, StatementTracker>(maxSize, 0.75f, true /* access order */);
-        evictionListeners = new CopyOnWriteArrayList<LruEvictionListener<PreparedStatement>>();
-        clearInProgress = new AtomicBoolean();
+        cache = new LinkedHashMap<JdbcPreparedStatementHandle, StatementTracker>(maxSize, 0.75f, true /* access order */);
+        evictionListners = new CopyOnWriteArrayList<LruEvictionListener>();
     }
 
     /**
@@ -105,15 +100,16 @@ public class LruStatementCache {
      * @param key the cache key
      * @return the cached JdbcPreparedStatementHandle statement, or null
      */
-    public PreparedStatement get(CacheKey key) {
+    public JdbcPreparedStatementHandle get(JdbcPreparedStatementHandle key) {
     	synchronized (cache) {
             // See LinkedHashMap documentation.  Getting an entry means it is
 	        // updated as the 'youngest' (Most Recently Used) entry.
 	        StatementTracker cached = cache.get(key);
 	        if (cached != null) {
 	            cached.usageCount++;
-	            if (log.isDebugEnabled()) { log.debug("delivered from cache with usage count " + cached.usageCount + " statement <" + key + ">"); }
-	            return cached.statement;
+	            key.setDelegate(cached.statement);
+	            if (log.isDebugEnabled()) log.debug("delivered from cache with usage count " + cached.usageCount + " statement <" + key + "> in " + key.getPooledConnection());
+	            return key;
 	        }
 
 	        return null;
@@ -126,16 +122,10 @@ public class LruStatementCache {
      * closed (by the client).  A "closed" statement has it's
      * usage counter decremented in the cache.
      *
-     * @param key a cache key
-     * @param statement a prepared statement handle
+     * @param key a prepared statement handle
      * @return a prepared statement
      */
-    public PreparedStatement put(CacheKey key, PreparedStatement statement) {
-    	if (clearInProgress.get())
-    	{
-    		return null;
-    	}
-
+    public JdbcPreparedStatementHandle put(JdbcPreparedStatementHandle key) {
     	synchronized (cache) {
             if (maxSize < 1) {
 	            return null;
@@ -145,13 +135,12 @@ public class LruStatementCache {
 	        // updated as the 'youngest' (Most Recently Used) entry.
 	        StatementTracker cached = cache.get(key);
 	        if (cached == null) {
-	            if (log.isDebugEnabled()) { log.debug("adding to cache statement <" + key + ">"); }
-	            cache.put(key, new StatementTracker(statement));
+	            if (log.isDebugEnabled()) log.debug("adding to cache statement <" + key + "> in " + key.getPooledConnection());
+	            cache.put(key, new StatementTracker(key.getDelegateUnchecked()));
 	            size++;
 	        } else {
 	            cached.usageCount--;
-	            statement = cached.statement;
-	            if (log.isDebugEnabled()) { log.debug("returning to cache statement <" + key + "> with usage count " + cached.usageCount); }
+	            if (log.isDebugEnabled()) log.debug("returning to cache statement <" + key + "> with usage count " + cached.usageCount + " in " + key.getPooledConnection());
 	        }
 
 	        // If the size is exceeded, we will _try_ to evict one (or more)
@@ -162,16 +151,8 @@ public class LruStatementCache {
 	            tryEviction();
 	        }
 
-	        return statement;
+	        return key;
     	}
-    }
-
-    public void addEvictionListener(LruEvictionListener<PreparedStatement> listener) {
-        evictionListeners.add(listener);
-    }
-
-    public void removeEvictionListener(LruEvictionListener<PreparedStatement> listener) {
-        evictionListeners.remove(listener);
     }
 
     /**
@@ -179,24 +160,16 @@ public class LruStatementCache {
      * connection close.
      */
     protected void clear() {
-    	if (clearInProgress.compareAndSet(false, true)) {
-    		try {
-		    	synchronized (cache) {
-			        Iterator<Entry<CacheKey, StatementTracker>> it = cache.entrySet().iterator();
-			        while (it.hasNext()) {
-			            Entry<CacheKey, StatementTracker> entry = it.next();
-			            StatementTracker tracker = entry.getValue();
-			            it.remove();
-			            fireEvictionEvent(tracker.statement);
-			        }
-			        cache.clear();
-			        size = 0;
-		    	}
-    		}
-    		finally
-    		{
-    			clearInProgress.set(false);
-    		}
+    	synchronized (cache) {
+            Iterator it = cache.entrySet().iterator();
+	        while (it.hasNext()) {
+	            Map.Entry entry = (Entry) it.next();
+	            StatementTracker tracker = (StatementTracker) entry.getValue();
+	            it.remove();
+	            fireEvictionEvent(tracker.statement);
+	        }
+	        cache.clear();
+	        size = 0;
     	}
     }
 
@@ -206,116 +179,42 @@ public class LruStatementCache {
      * evicted until the cache is reduced to maxSize.
      */
     private void tryEviction() {
-        // Iteration order of the LinkedHashMap is from LRU to MRU
-    	Iterator<Entry<CacheKey, StatementTracker>> it = cache.entrySet().iterator();
-        while (it.hasNext()) {
-        	Entry<CacheKey, StatementTracker> entry = it.next();
-            StatementTracker tracker = entry.getValue();
-            if (tracker.usageCount == 0) {
-                it.remove();
-                size--;
-                CacheKey key = entry.getKey();
-                if (log.isDebugEnabled()) { log.debug("evicting from cache statement <" + key + "> " + entry.getValue().statement); }
-                fireEvictionEvent(tracker.statement);
-                // We can stop evicting if we're at maxSize...
-                if (size <= maxSize) {
-                    break;
+        synchronized (cache) {
+            // Iteration order of the LinkedHashMap is from LRU to MRU
+            Iterator it = cache.entrySet().iterator();
+            while (it.hasNext()) {
+                Entry entry = (Entry) it.next();
+                StatementTracker tracker = (StatementTracker) entry.getValue();
+                if (tracker.usageCount == 0) {
+                    it.remove();
+                    size--;
+                    JdbcPreparedStatementHandle key = (JdbcPreparedStatementHandle) entry.getKey();
+                    if (log.isDebugEnabled()) log.debug("evicting from cache statement <" + key + "> " + key.getDelegateUnchecked() + " in " + key.getPooledConnection());
+                    fireEvictionEvent(tracker.statement);
+                    // We can stop evicting if we're at maxSize...
+                    if (size <= maxSize) {
+                        break;
+                    }
                 }
             }
         }
     }
 
-    private void fireEvictionEvent(PreparedStatement stmt) {
-        for (LruEvictionListener<PreparedStatement> listener : evictionListeners) {
-            listener.onEviction(stmt);
+    private void fireEvictionEvent(Object value) {
+        for (LruEvictionListener listener : evictionListners) {
+            listener.onEviction(value);
         }
     }
 
-    public static final class CacheKey {
-        // All of these attributes must match a proposed statement before the
-        // statement can be considered "the same" and delivered from the cache.
-        private final String sql;
-        private int resultSetType = ResultSet.TYPE_FORWARD_ONLY;
-        private int resultSetConcurrency = ResultSet.CONCUR_READ_ONLY;
-        private Integer resultSetHoldability;
-        private Integer autoGeneratedKeys;
-        private int[] columnIndexes;
-        private String[] columnNames;
-
-        public CacheKey(String sql) {
-            this.sql = sql;
-        }
-
-        public CacheKey(String sql, int autoGeneratedKeys) {
-            this.sql = sql;
-            this.autoGeneratedKeys = new Integer(autoGeneratedKeys);
-        }
-
-        public CacheKey(String sql, int resultSetType, int resultSetConcurrency) {
-            this.sql = sql;
-            this.resultSetType = resultSetType;
-            this.resultSetConcurrency = resultSetConcurrency;
-        }
-
-        public CacheKey(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
-            this.sql = sql;
-            this.resultSetType = resultSetType;
-            this.resultSetConcurrency = resultSetConcurrency;
-            this.resultSetHoldability = new Integer(resultSetHoldability);
-        }
-
-        public CacheKey(String sql, int[] columnIndexes) {
-            this.sql = sql;
-            this.columnIndexes = new int[columnIndexes.length];
-            System.arraycopy(columnIndexes, 0, this.columnIndexes, 0, columnIndexes.length);
-        }
-
-        public CacheKey(String sql, String[] columnNames) {
-            this.sql = sql;
-            this.columnNames = new String[columnNames.length];
-            System.arraycopy(columnNames, 0, this.columnNames, 0, columnNames.length);
-        }
-
-        /**
-         * Overridden equals() that takes all PreparedStatement attributes into
-         * account.
-         * @return true if equal, false otherwise
-         */
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof CacheKey)) {
-                return false;
-            }
-
-            CacheKey otherKey = (CacheKey) obj;
-            if (!sql.equals(otherKey.sql)) {
-                return false;
-            } else if (resultSetType != otherKey.resultSetType) {
-                return false;
-            } else if (resultSetConcurrency != otherKey.resultSetConcurrency) {
-                return false;
-            } else if (!Arrays.equals(columnIndexes, otherKey.columnIndexes)) {
-                return false;
-            } else if (!Arrays.equals(columnNames, otherKey.columnNames)) {
-                return false;
-            } else if ((autoGeneratedKeys == null && otherKey.autoGeneratedKeys != null) ||
-                    (autoGeneratedKeys != null && !autoGeneratedKeys.equals(otherKey.autoGeneratedKeys))) {
-                return false;
-            } else if ((resultSetHoldability == null && otherKey.resultSetHoldability != null) ||
-                    (resultSetHoldability != null && !resultSetHoldability.equals(otherKey.resultSetHoldability))) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            return sql != null ? sql.hashCode() : System.identityHashCode(this);
-        }
+    public void addEvictionListener(LruEvictionListener listener) {
+        evictionListners.add(listener);
     }
 
-    private static final class StatementTracker {
+    public void removeEvictionListener(LruEvictionListener listener) {
+        evictionListners.remove(listener);
+    }
+
+    private final static class StatementTracker {
         private final PreparedStatement statement;
         private int usageCount;
 

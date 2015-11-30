@@ -1,25 +1,26 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm;
 
-import bitronix.tm.utils.ClassLoaderUtils;
-import bitronix.tm.utils.InitializationException;
-import bitronix.tm.utils.PropertyException;
-import bitronix.tm.utils.PropertyUtils;
-import bitronix.tm.utils.Service;
+import bitronix.tm.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,9 +28,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
-import java.nio.charset.Charset;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Configuration repository of the transaction manager. You can set configurable values either via the properties file
@@ -42,17 +41,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>All those properties can refer to other defined ones or to system properties using the Ant notation:
  * <code>${some.property.name}</code>.</p>
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class Configuration implements Service {
 
     private final static Logger log = LoggerFactory.getLogger(Configuration.class);
 
     private final static int MAX_SERVER_ID_LENGTH = 51;
-    private final static Charset SERVER_ID_CHARSET = Charset.forName("US-ASCII");
 
     private volatile String serverId;
-    private final AtomicReference<byte[]> serverIdArray = new AtomicReference<byte[]>();
+    private volatile byte[] serverIdArray;
     private volatile String logPart1Filename;
     private volatile String logPart2Filename;
     private volatile boolean forcedWriteEnabled;
@@ -67,7 +65,6 @@ public class Configuration implements Service {
     private volatile int gracefulShutdownInterval;
     private volatile int backgroundRecoveryIntervalSeconds;
     private volatile boolean disableJmx;
-    private volatile boolean synchronousJmxRegistration;
     private volatile String jndiUserTransactionName;
     private volatile String jndiTransactionSynchronizationRegistryName;
     private volatile String journal;
@@ -75,8 +72,7 @@ public class Configuration implements Service {
     private volatile boolean currentNodeOnlyRecovery;
     private volatile boolean allowMultipleLrc;
     private volatile String resourceConfigurationFilename;
-    private volatile boolean conservativeJournaling;
-    private volatile String jdbcProxyFactoryClass;
+
 
     protected Configuration() {
         try {
@@ -85,17 +81,17 @@ public class Configuration implements Service {
             try {
                 String configurationFilename = System.getProperty("bitronix.tm.configuration");
                 if (configurationFilename != null) {
-                    if (log.isDebugEnabled()) { log.debug("loading configuration file " + configurationFilename); }
+                    if (log.isDebugEnabled()) log.debug("loading configuration file " + configurationFilename);
                     in = new FileInputStream(configurationFilename);
                 } else {
-                    if (log.isDebugEnabled()) { log.debug("loading default configuration"); }
+                    if (log.isDebugEnabled()) log.debug("loading default configuration");
                     in = ClassLoaderUtils.getResourceAsStream("bitronix-default-config.properties");
                 }
                 properties = new Properties();
                 if (in != null)
                     properties.load(in);
                 else
-                     if (log.isDebugEnabled()) { log.debug("no configuration file found, using default settings"); }
+                     if (log.isDebugEnabled()) log.debug("no configuration file found, using default settings");
             } finally {
                 if (in != null) in.close();
             }
@@ -115,7 +111,6 @@ public class Configuration implements Service {
             gracefulShutdownInterval = getInt(properties, "bitronix.tm.timer.gracefulShutdownInterval", 60);
             backgroundRecoveryIntervalSeconds = getInt(properties, "bitronix.tm.timer.backgroundRecoveryIntervalSeconds", 60);
             disableJmx = getBoolean(properties, "bitronix.tm.disableJmx", false);
-            synchronousJmxRegistration = getBoolean(properties, "bitronix.tm.jmx.sync", false);
             jndiUserTransactionName = getString(properties, "bitronix.tm.jndi.userTransactionName", "java:comp/UserTransaction");
             jndiTransactionSynchronizationRegistryName = getString(properties, "bitronix.tm.jndi.transactionSynchronizationRegistryName", "java:comp/TransactionSynchronizationRegistry");
             journal = getString(properties, "bitronix.tm.journal", "disk");
@@ -123,8 +118,6 @@ public class Configuration implements Service {
             currentNodeOnlyRecovery = getBoolean(properties, "bitronix.tm.currentNodeOnlyRecovery", true);
             allowMultipleLrc = getBoolean(properties, "bitronix.tm.allowMultipleLrc", false);
             resourceConfigurationFilename = getString(properties, "bitronix.tm.resource.configuration", null);
-            conservativeJournaling = getBoolean(properties, "bitronix.tm.conservativeJournaling", false);
-            jdbcProxyFactoryClass = getString(properties, "bitronix.tm.jdbcProxyFactoryClass", "auto");
         } catch (IOException ex) {
             throw new InitializationException("error loading configuration", ex);
         }
@@ -133,7 +126,7 @@ public class Configuration implements Service {
 
     /**
      * ASCII ID that must uniquely identify this TM instance. It must not exceed 51 characters or it will be truncated.
-     * <p>Property name:<br><b>bitronix.tm.serverId -</b> <i>(defaults to server's IP address but that's unsafe for
+     * <p>Property name:<br/><b>bitronix.tm.serverId -</b> <i>(defaults to server's IP address but that's unsafe for
      * production use)</i></p>
      * @return the unique ID of this TM instance.
      */
@@ -156,7 +149,7 @@ public class Configuration implements Service {
 
     /**
      * Get the journal fragment file 1 name.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.logPart1Filename -</b> <i>(defaults to btm1.tlog)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.logPart1Filename -</b> <i>(defaults to btm1.tlog)</i></p>
      * @return the journal fragment file 1 name.
      */
     public String getLogPart1Filename() {
@@ -177,7 +170,7 @@ public class Configuration implements Service {
 
     /**
      * Get the journal fragment file 2 name.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.logPart2Filename -</b> <i>(defaults to btm2.tlog)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.logPart2Filename -</b> <i>(defaults to btm2.tlog)</i></p>
      * @return the journal fragment file 2 name.
      */
     public String getLogPart2Filename() {
@@ -199,7 +192,7 @@ public class Configuration implements Service {
     /**
      * Are logs forced to disk?  Do not set to false in production since without disk force, integrity is not
      * guaranteed.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.forcedWriteEnabled -</b> <i>(defaults to true)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.forcedWriteEnabled -</b> <i>(defaults to true)</i></p>
      * @return true if logs are forced to disk, false otherwise.
      */
     public boolean isForcedWriteEnabled() {
@@ -221,7 +214,7 @@ public class Configuration implements Service {
 
     /**
      * Are disk forces batched? Disabling batching can seriously lower the transaction manager's throughput.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.forceBatchingEnabled -</b> <i>(defaults to true)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.forceBatchingEnabled -</b> <i>(defaults to true)</i></p>
      * @return true if disk forces are batched, false otherwise.
      */
     public boolean isForceBatchingEnabled() {
@@ -236,7 +229,6 @@ public class Configuration implements Service {
      */
     public Configuration setForceBatchingEnabled(boolean forceBatchingEnabled) {
         checkNotStarted();
-        log.warn("forceBatchingEnabled is not longer used");
         this.forceBatchingEnabled = forceBatchingEnabled;
         return this;
     }
@@ -244,7 +236,7 @@ public class Configuration implements Service {
     /**
      * Maximum size in megabytes of the journal fragments. Larger logs allow transactions to stay longer in-doubt but
      * the TM pauses longer when a fragment is full.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.maxLogSize -</b> <i>(defaults to 2)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.maxLogSize -</b> <i>(defaults to 2)</i></p>
      * @return the maximum size in megabytes of the journal fragments.
      */
     public int getMaxLogSizeInMb() {
@@ -267,7 +259,7 @@ public class Configuration implements Service {
     /**
      * Should only mandatory logs be written? Enabling this parameter lowers space usage of the fragments but makes
      * debugging more complex.
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.filterLogStatus -</b> <i>(defaults to false)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.filterLogStatus -</b> <i>(defaults to false)</i></p>
      * @return true if only mandatory logs should be written.
      */
     public boolean isFilterLogStatus() {
@@ -289,7 +281,7 @@ public class Configuration implements Service {
 
     /**
      * Should corrupted logs be skipped?
-     * <p>Property name:<br><b>bitronix.tm.journal.disk.skipCorruptedLogs -</b> <i>(defaults to false)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.journal.disk.skipCorruptedLogs -</b> <i>(defaults to false)</i></p>
      * @return true if corrupted logs should be skipped.
      */
     public boolean isSkipCorruptedLogs() {
@@ -312,7 +304,7 @@ public class Configuration implements Service {
      * Should two phase commit be executed asynchronously? Asynchronous two phase commit can improve performance when
      * there are many resources enlisted in transactions but is more CPU intensive due to the dynamic thread spawning
      * requirements. It also makes debugging more complex.
-     * <p>Property name:<br><b>bitronix.tm.2pc.async -</b> <i>(defaults to false)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.2pc.async -</b> <i>(defaults to false)</i></p>
      * @return true if two phase commit should be executed asynchronously.
      */
     public boolean isAsynchronous2Pc() {
@@ -336,7 +328,7 @@ public class Configuration implements Service {
     /**
      * Should transactions executed without a single enlisted resource result in a warning or not? Most of the time
      * transactions executed with no enlisted resource reflect a bug or a mis-configuration somewhere.
-     * <p>Property name:<br><b>bitronix.tm.2pc.warnAboutZeroResourceTransactions -</b> <i>(defaults to true)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.2pc.warnAboutZeroResourceTransactions -</b> <i>(defaults to true)</i></p>
      * @return true if transactions executed without a single enlisted resource should result in a warning.
      */
     public boolean isWarnAboutZeroResourceTransaction() {
@@ -360,7 +352,7 @@ public class Configuration implements Service {
     /**
      * Should creation and commit call stacks of transactions executed without a single enlisted tracked and logged
      * or not?
-     * <p>Property name:<br><b>bitronix.tm.2pc.debugZeroResourceTransactions -</b> <i>(defaults to false)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.2pc.debugZeroResourceTransactions -</b> <i>(defaults to false)</i></p>
      * @return true if creation and commit call stacks of transactions executed without a single enlisted resource
      *         should be tracked and logged.
      */
@@ -385,7 +377,7 @@ public class Configuration implements Service {
 
     /**
      * Default transaction timeout in seconds.
-     * <p>Property name:<br><b>bitronix.tm.timer.defaultTransactionTimeout -</b> <i>(defaults to 60)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.timer.defaultTransactionTimeout -</b> <i>(defaults to 60)</i></p>
      * @return the default transaction timeout in seconds.
      */
     public int getDefaultTransactionTimeout() {
@@ -406,7 +398,7 @@ public class Configuration implements Service {
 
     /**
      * Maximum amount of seconds the TM will wait for transactions to get done before aborting them at shutdown time.
-     * <p>Property name:<br><b>bitronix.tm.timer.gracefulShutdownInterval -</b> <i>(defaults to 60)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.timer.gracefulShutdownInterval -</b> <i>(defaults to 60)</i></p>
      * @return the maximum amount of time in seconds.
      */
     public int getGracefulShutdownInterval() {
@@ -428,11 +420,10 @@ public class Configuration implements Service {
 
     /**
      * Interval in minutes at which to run the recovery process in the background. Disabled when set to 0.
-     * <p>Property name:<br><b>bitronix.tm.timer.backgroundRecoveryInterval -</b> <i>(defaults to 0)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.timer.backgroundRecoveryInterval -</b> <i>(defaults to 0)</i></p>
      * @return the interval in minutes.
      * @deprecated superceded by #getBackgroundRecoveryIntervalSeconds().
      */
-    @Deprecated
     public int getBackgroundRecoveryInterval() {
         return getBackgroundRecoveryIntervalSeconds() / 60;
     }
@@ -444,7 +435,6 @@ public class Configuration implements Service {
      * @deprecated superceded by #setBackgroundRecoveryIntervalSeconds(int).
      * @return this.
      */
-    @Deprecated
     public Configuration setBackgroundRecoveryInterval(int backgroundRecoveryInterval) {
         log.warn("setBackgroundRecoveryInterval() is deprecated, consider using setBackgroundRecoveryIntervalSeconds() instead.");
         setBackgroundRecoveryIntervalSeconds(backgroundRecoveryInterval * 60);
@@ -453,7 +443,7 @@ public class Configuration implements Service {
 
     /**
      * Interval in seconds at which to run the recovery process in the background. Disabled when set to 0.
-     * <p>Property name:<br><b>bitronix.tm.timer.backgroundRecoveryIntervalSeconds -</b> <i>(defaults to 60)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.timer.backgroundRecoveryIntervalSeconds -</b> <i>(defaults to 60)</i></p>
      * @return the interval in seconds.
      */
     public int getBackgroundRecoveryIntervalSeconds() {
@@ -474,7 +464,7 @@ public class Configuration implements Service {
 
     /**
      * Should JMX Mbeans not be registered even if a JMX MBean server is detected?
-     * <p>Property name:<br><b>bitronix.tm.disableJmx -</b> <i>(defaults to false)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.disableJmx -</b> <i>(defaults to false)</i></p>
      * @return true if JMX MBeans should never be registered.
      */
     public boolean isDisableJmx() {
@@ -490,30 +480,6 @@ public class Configuration implements Service {
     public Configuration setDisableJmx(boolean disableJmx) {
         checkNotStarted();
         this.disableJmx = disableJmx;
-        return this;
-    }
-
-    /**
-     * Should JMX registrations and un-registrations be done in a synchronous / blocking way.
-     * <p>
-     * By default all JMX registrations are done asynchronously. Registrations and un-registrations
-     * are combined to avoid the registration of short lived instances and increase the overall throughput.
-     *
-     * @return true if the caller should be blocked when MBeans are registered (defaults to false).
-     */
-    public boolean isSynchronousJmxRegistration() {
-        return synchronousJmxRegistration;
-    }
-
-    /**
-     * Toggles synchronous and asynchronous JMX registration mode.
-     * @param synchronousJmxRegistration true if the caller should be blocked when MBeans are registered
-     *                                   (defaults to false).
-     * @return this.
-     */
-    public Configuration setSynchronousJmxRegistration(boolean synchronousJmxRegistration) {
-        checkNotStarted();
-        this.synchronousJmxRegistration = synchronousJmxRegistration;
         return this;
     }
 
@@ -648,48 +614,9 @@ public class Configuration implements Service {
     }
 
     /**
-     * Should the Disk Journal follow a conservative (sequential write) policy?
-     * @return true if the Disk Journal should serialize writes to the transaction log, false otherwise.
-     */
-    public boolean isConservativeJournaling() {
-        return conservativeJournaling;
-    }
-
-    /**
-     * Set to true if the Disk Journal should follow a conservative (sequential write) policy.
-     * @param conservativeJournaling true if the Disk Journal should follow a conservative (sequential write) policy
-     * @return this
-     */
-    public Configuration setConservativeJournaling(boolean conservativeJournaling) {
-        checkNotStarted();
-    	this.conservativeJournaling = conservativeJournaling;
-    	return this;
-    }
-
-    /**
-     * Get the factory class for creating JDBC proxy instances.
-     *
-     * @return the name of the factory class
-     */
-    public String getJdbcProxyFactoryClass() {
-        return jdbcProxyFactoryClass;
-    }
-
-
-    /**
-     * Set the name of the factory class for creating JDBC proxy instances.
-     *
-     * @param jdbcProxyFactoryClass the name of the proxy class
-     */
-    public void setJdbcProxyFactoryClass(String jdbcProxyFactoryClass) {
-        this.jdbcProxyFactoryClass = jdbcProxyFactoryClass;
-    }
-
-
-    /**
      * {@link bitronix.tm.resource.ResourceLoader} configuration file name. {@link bitronix.tm.resource.ResourceLoader}
      * will be disabled if this value is null.
-     * <p>Property name:<br><b>bitronix.tm.resource.configuration -</b> <i>(defaults to null)</i></p>
+     * <p>Property name:<br/><b>bitronix.tm.resource.configuration -</b> <i>(defaults to null)</i></p>
      * @return the filename of the resources configuration file or null if not configured.
      */
     public String getResourceConfigurationFilename() {
@@ -710,63 +637,44 @@ public class Configuration implements Service {
     }
 
     /**
-     * Build the server ID byte array that will be prepended in generated UIDs. Once built, the value is cached for the duration of the JVM lifespan.
+     * Build the server ID byte array that will be prepended in generated UIDs. Once built, the value is cached for
+     * the duration of the JVM lifespan.
      * @return the server ID.
      */
     public byte[] buildServerIdArray() {
-        byte[] id = serverIdArray.get();
-        if (id == null) {
-            // DCL is not a problem here, we just want to avoid multiple concurrent creations of the same array as it would look ugly in the logs.
-            // More important is to avoid contended synchronizations when accessing this array as it is part of Uid creation happening when a TX is opened.
-            synchronized (this) {
-                while ((id = serverIdArray.get()) == null) {
-                    try {
-                        id = serverId.getBytes(SERVER_ID_CHARSET);
-
-                        String transcodedId = new String(id, SERVER_ID_CHARSET);
-                        if (!transcodedId.equals(serverId)) {
-                            log.warn("The given server ID '" + serverId + "' is not compatible with the ID charset '" + SERVER_ID_CHARSET.displayName() + "' as it transcodes to '" + transcodedId + "'. " +
-                                    "It is highly recommended that you specify a compatible server ID using only characters that are allowed in the ID charset.");
-                        }
-                    } catch (Exception ex) {
-                        log.warn("Cannot get the unique server ID for this JVM ('bitronix.tm.serverId'). Make sure it is configured and you use only " + SERVER_ID_CHARSET.displayName() + " characters. " +
-                                "Will use IP address instead (unsafe for production usage!).");
-                        try {
-                            id = InetAddress.getLocalHost().getHostAddress().getBytes(SERVER_ID_CHARSET);
-                        } catch (Exception ex2) {
-                            final String unknownServerId = "unknown-server-id";
-                            log.warn("Cannot get the local IP address. Please verify your network configuration. Will use the constant '" + unknownServerId + "' as server ID (highly unsafe!).", ex2);
-                            id = unknownServerId.getBytes();
-                        }
-                    }
-
-                    if (id.length > MAX_SERVER_ID_LENGTH) {
-                        byte[] truncatedServerId = new byte[MAX_SERVER_ID_LENGTH];
-                        System.arraycopy(id, 0, truncatedServerId, 0, MAX_SERVER_ID_LENGTH);
-                        log.warn("The applied server ID '" + new String(id) + "' has to be truncated to " + MAX_SERVER_ID_LENGTH +
-                                " chars (builtin hard limit) resulting in " + new String(truncatedServerId) + ". This may be highly unsafe if IDs differ with suffixes only!");
-                        id = truncatedServerId;
-                    }
-
-                    if (serverIdArray.compareAndSet(null, id)) {
-                        String idAsString = new String(id, SERVER_ID_CHARSET);
-                        if (serverId == null)
-                            serverId = idAsString;
-
-                        log.info("JVM unique ID: <" + idAsString + "> - Using this server ID to ensure uniqueness of transaction IDs across the network.");
-                    }
+        if (serverIdArray == null) {
+            try {
+                serverIdArray = serverId.substring(0, Math.min(serverId.length(), MAX_SERVER_ID_LENGTH)).getBytes("US-ASCII");
+            } catch (Exception ex) {
+                log.warn("cannot get this JVM unique ID. Make sure it is configured and you only use ASCII characters. Will use IP address instead (unsafe for production usage!).");
+                try {
+                    serverIdArray = InetAddress.getLocalHost().getHostAddress().getBytes("US-ASCII");
+                } catch (Exception ex2) {
+                    final String unknownServerId = "unknown-server-id";
+                    log.warn("cannot get the local IP address. Will replace it with '" + unknownServerId + "' constant (highly unsafe!).");
+                    serverIdArray = unknownServerId.getBytes();
                 }
             }
+
+            if (serverIdArray.length > MAX_SERVER_ID_LENGTH) {
+                byte[] truncatedServerId = new byte[MAX_SERVER_ID_LENGTH];
+                System.arraycopy(serverIdArray, 0, truncatedServerId, 0, MAX_SERVER_ID_LENGTH);
+                serverIdArray = truncatedServerId;
+            }
+
+            String serverIdArrayAsString = new String(serverIdArray);
+            if (serverId == null)
+                serverId = serverIdArrayAsString;
+
+            log.info("JVM unique ID: <" + serverIdArrayAsString + ">");
         }
-        return id;
+        return serverIdArray;
     }
 
-    @Override
     public void shutdown() {
-        serverIdArray.set(null);
+        serverIdArray = null;
     }
 
-    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(512);
         sb.append("a Configuration with [");
@@ -775,7 +683,7 @@ public class Configuration implements Service {
             sb.append(PropertyUtils.propertiesToString(this));
         } catch (PropertyException ex) {
             sb.append("???");
-            if (log.isDebugEnabled()) { log.debug("error accessing properties of Configuration object", ex); }
+            if (log.isDebugEnabled()) log.debug("error accessing properties of Configuration object", ex);
         }
 
         sb.append("]");

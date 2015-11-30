@@ -1,23 +1,28 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.journal;
 
 import bitronix.tm.utils.Decoder;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,7 +33,7 @@ import java.nio.channels.FileChannel;
  * <p>The physical data is read when this object is created then cached. Calling setter methods sets the header field
  * then moves the file pointer back to the previous location.</p>
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class TransactionLogHeader {
 
@@ -69,6 +74,7 @@ public class TransactionLogHeader {
      */
     public final static byte UNCLEAN_LOG_STATE = -1;
 
+
     private final FileChannel fc;
     private final long maxFileLength;
 
@@ -79,6 +85,7 @@ public class TransactionLogHeader {
 
     /**
      * TransactionLogHeader are used to control headers of the specified RandomAccessFile.
+     * All calls to setters are synchronized on the passed-in RandomAccessFile.
      * @param fc the file channel to read from.
      * @param maxFileLength the max file length.
      * @throws IOException if an I/O error occurs.
@@ -87,19 +94,21 @@ public class TransactionLogHeader {
         this.fc = fc;
         this.maxFileLength = maxFileLength;
 
-        fc.position(FORMAT_ID_HEADER);
-        ByteBuffer buf = ByteBuffer.allocate(4 + 8 + 1 + 8);
-        while (buf.hasRemaining()) {
-            this.fc.read(buf);
+        synchronized (this.fc) {
+            fc.position(FORMAT_ID_HEADER);
+            ByteBuffer buf = ByteBuffer.allocate(4 + 8 + 1 + 8);
+            while (buf.hasRemaining()) {
+                this.fc.read(buf);
+            }
+            buf.flip();
+            formatId = buf.getInt();
+            timestamp = buf.getLong();
+            state = buf.get();
+            position = buf.getLong();
+            fc.position(position);
         }
-        buf.flip();
-        formatId = buf.getInt();
-        timestamp = buf.getLong();
-        state = buf.get();
-        position = buf.getLong();
-        fc.position(position);
 
-        if (log.isDebugEnabled()) { log.debug("read header " + this); }
+        if (log.isDebugEnabled()) log.debug("read header " + this);
     }
 
     /**
@@ -148,10 +157,15 @@ public class TransactionLogHeader {
         ByteBuffer buf = ByteBuffer.allocate(8);
         buf.putInt(formatId);
         buf.flip();
-        while (buf.hasRemaining()) {
-        	fc.write(buf, FORMAT_ID_HEADER + buf.position());
+        synchronized (fc) {
+            long currentPos = fc.position();
+            fc.position(FORMAT_ID_HEADER);
+            while (buf.hasRemaining()) {
+                this.fc.write(buf);
+            }
+            fc.position(currentPos);
+            this.formatId = formatId;
         }
-        this.formatId = formatId;
     }
 
     /**
@@ -162,12 +176,17 @@ public class TransactionLogHeader {
      */
     public void setTimestamp(long timestamp) throws IOException {
         ByteBuffer buf = ByteBuffer.allocate(8);
-        buf.putLong(timestamp);
+        buf.putLong(position);
         buf.flip();
-        while (buf.hasRemaining()) {
-        	fc.write(buf, TIMESTAMP_HEADER + buf.position());
+        synchronized (fc) {
+            long currentPos = fc.position();
+            fc.position(TIMESTAMP_HEADER);
+            while (buf.hasRemaining()) {
+                this.fc.write(buf);
+            }
+            fc.position(currentPos);
+            this.timestamp = timestamp;
         }
-        this.timestamp = timestamp;
     }
 
     /**
@@ -180,10 +199,15 @@ public class TransactionLogHeader {
         ByteBuffer buf = ByteBuffer.allocate(1);
         buf.put(state);
         buf.flip();
-        while (buf.hasRemaining()) {
-        	fc.write(buf, STATE_HEADER + buf.position());
+        synchronized (fc) {
+            long currentPos = fc.position();
+            fc.position(STATE_HEADER);
+            while (buf.hasRemaining()) {
+                this.fc.write(buf);
+            }
+            fc.position(currentPos);
+            this.state = state;
         }
-        this.state = state;
     }
 
     /**
@@ -195,18 +219,30 @@ public class TransactionLogHeader {
     public void setPosition(long position) throws IOException {
         if (position < HEADER_LENGTH)
             throw new IOException("invalid position " + position + " (too low)");
-        if (position > maxFileLength)
+        if (position >= maxFileLength)
             throw new IOException("invalid position " + position + " (too high)");
 
         ByteBuffer buf = ByteBuffer.allocate(8);
         buf.putLong(position);
         buf.flip();
-        while (buf.hasRemaining()) {
-        	fc.write(buf, CURRENT_POSITION_HEADER + buf.position());
+        synchronized (fc) {
+            fc.position(CURRENT_POSITION_HEADER);
+            while (buf.hasRemaining()) {
+                this.fc.write(buf);
+            }
+            fc.position(position);
+            this.position = position;
         }
+    }
 
-        this.position = position;
-        fc.position(position);
+    /**
+     * Advance CURRENT_POSITION_HEADER.
+     * @see #setPosition
+     * @param distance the value to add to the current position.
+     * @throws IOException if an I/O error occurs.
+     */
+    public void goAhead(long distance) throws IOException {
+        setPosition(getPosition() + distance);
     }
 
     /**
@@ -222,7 +258,6 @@ public class TransactionLogHeader {
      * Create human-readable String representation.
      * @return a human-readable String representing this object's state.
      */
-    @Override
     public String toString() {
         return "a Bitronix TransactionLogHeader with timestamp=" + timestamp +
                 ", state=" + Decoder.decodeHeaderState(state) +

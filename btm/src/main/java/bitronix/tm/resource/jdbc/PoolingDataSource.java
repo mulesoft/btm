@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jdbc;
 
@@ -23,7 +28,10 @@ import bitronix.tm.resource.ResourceRegistrar;
 import bitronix.tm.resource.common.RecoveryXAResourceHolder;
 import bitronix.tm.resource.common.ResourceBean;
 import bitronix.tm.resource.common.XAPool;
+import bitronix.tm.resource.common.XAResourceHolder;
 import bitronix.tm.resource.common.XAResourceProducer;
+import bitronix.tm.resource.common.XAStatefulHolder;
+import bitronix.tm.utils.ClassLoaderUtils;
 import bitronix.tm.utils.ManagementRegistrar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,54 +43,48 @@ import javax.sql.DataSource;
 import javax.sql.XADataSource;
 import javax.transaction.xa.XAResource;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of a JDBC {@link DataSource} wrapping vendor's {@link XADataSource} implementation.
  *
- * @author Ludovic Orban
- * @author Brett Wooldridge
+ * @author lorban, brettw
  */
-@SuppressWarnings("serial")
-public class PoolingDataSource extends ResourceBean implements DataSource, XAResourceProducer<JdbcPooledConnection, JdbcPooledConnection>, PoolingDataSourceMBean {
+public class PoolingDataSource extends ResourceBean implements DataSource, XAResourceProducer, PoolingDataSourceMBean {
 
     private final static Logger log = LoggerFactory.getLogger(PoolingDataSource.class);
 
-    private volatile transient XAPool<JdbcPooledConnection, JdbcPooledConnection> pool;
+    private volatile transient XAPool pool;
     private volatile transient XADataSource xaDataSource;
     private volatile transient RecoveryXAResourceHolder recoveryXAResourceHolder;
-    private volatile transient Connection recoveryConnectionHandle;
-    private volatile transient Map<XAResource, JdbcPooledConnection> xaResourceHolderMap;
+    private volatile transient JdbcConnectionHandle recoveryConnectionHandle;
 
     private volatile String testQuery;
     private volatile boolean enableJdbc4ConnectionTest;
-    private volatile int connectionTestTimeout;
     private volatile int preparedStatementCacheSize = 0;
     private volatile String isolationLevel;
-    private volatile String cursorHoldability;
-    private volatile String localAutoCommit;
+	private volatile String cursorHoldability;
+	private volatile String localAutoCommit;
     private volatile String jmxName;
     private final List<ConnectionCustomizer> connectionCustomizers = new CopyOnWriteArrayList<ConnectionCustomizer>();
 
     public PoolingDataSource() {
-        xaResourceHolderMap = new ConcurrentHashMap<XAResource, JdbcPooledConnection>();
     }
 
     /**
      * Initializes the pool by creating the initial amount of connections.
      */
-    @Override
     public synchronized void init() {
-    	if (this.pool != null)
-    		return;
-
         try {
+            if (this.pool != null)
+                return;
+
             buildXAPool();
             this.jmxName = "bitronix.tm:type=JDBC,UniqueName=" + ManagementRegistrar.makeValidName(getUniqueName());
             ManagementRegistrar.register(jmxName, this);
@@ -91,41 +93,20 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
         }
     }
 
-    private void buildXAPool() throws Exception {
+    private synchronized void buildXAPool() throws Exception {
         if (pool != null)
             return;
 
-        if (log.isDebugEnabled()) { log.debug("building XA pool for " + getUniqueName() + " with " + getMinPoolSize() + " connection(s)"); }
-        pool = new XAPool<JdbcPooledConnection, JdbcPooledConnection>(this, this, xaDataSource);
-        boolean builtXaFactory = false;
-        if (xaDataSource == null) {
-            xaDataSource = (XADataSource) pool.getXAFactory();
-            builtXaFactory = true;
-        }
+        if (log.isDebugEnabled()) log.debug("building XA pool for " + getUniqueName() + " with " + getMinPoolSize() + " connection(s)");
+        pool = new XAPool(this, this);
+        xaDataSource = (XADataSource) pool.getXAFactory();
         try {
             ResourceRegistrar.register(this);
         } catch (RecoveryException ex) {
-            if (builtXaFactory) xaDataSource = null;
             pool = null;
+            xaDataSource = null;
             throw ex;
         }
-    }
-
-    /**
-     * @return the wrapped XADataSource.
-     */
-    public XADataSource getXaDataSource() {
-        return xaDataSource;
-    }
-
-    /**
-     * Inject a pre-configured XADataSource instead of relying on className and driverProperties
-     * to build one. Upon deserialization the xaDataSource will be null and will need to be
-     * manually re-injected.
-     * @param xaDataSource the pre-configured XADataSource.
-     */
-    public void setXaDataSource(XADataSource xaDataSource) {
-        this.xaDataSource = xaDataSource;
     }
 
     /**
@@ -159,37 +140,6 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
      */
     public boolean isEnableJdbc4ConnectionTest() {
         return enableJdbc4ConnectionTest;
-    }
-
-    /**
-     * Determines how many seconds the connection test logic
-     * will wait for a response from the database.
-     * @param connectionTestTimeout connection timeout
-     */
-    public void setConnectionTestTimeout(int connectionTestTimeout) {
-        this.connectionTestTimeout = connectionTestTimeout;
-    }
-
-    /**
-     * @return how many seconds each connection test will wait for a response.
-     */
-    public int getConnectionTestTimeout() {
-        return connectionTestTimeout;
-    }
-
-    /**
-     * @return how many seconds each connection test will wait for a response,
-     * bounded above by the acquisition timeout.
-     */
-    public int getEffectiveConnectionTestTimeout() {
-        int t1 = getConnectionTestTimeout();
-        int t2 = getAcquisitionTimeout();
-
-        if ((t1 > 0) && (t2 > 0)) {
-            return Math.min(t1, t2);
-        } else {
-            return Math.max(t1, t2);
-        }
     }
 
     /**
@@ -259,9 +209,9 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
     }
 
     public void removeConnectionCustomizer(ConnectionCustomizer connectionCustomizer) {
-        Iterator<ConnectionCustomizer> it = connectionCustomizers.iterator();
+        Iterator it = connectionCustomizers.iterator();
         while (it.hasNext()) {
-            ConnectionCustomizer customizer = it.next();
+            ConnectionCustomizer customizer = (ConnectionCustomizer)it.next();
             if (customizer == connectionCustomizer) {
                 it.remove();
                 return;
@@ -279,26 +229,6 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
         }
     }
 
-    void fireOnLease(Connection connection){
-        for (ConnectionCustomizer connectionCustomizer : connectionCustomizers) {
-            try {
-                connectionCustomizer.onLease(connection, getUniqueName());
-            } catch (Exception ex){
-                log.warn("ConnectionCustomizer.onLease() failed for " + connectionCustomizer, ex);
-            }
-        }
-    }
-
-    void fireOnRelease(Connection connection){
-        for (ConnectionCustomizer connectionCustomizer : connectionCustomizers) {
-            try {
-                connectionCustomizer.onRelease(connection, getUniqueName());
-            } catch (Exception ex){
-                log.warn("ConnectionCustomizer.onRelease() failed for " + connectionCustomizer, ex);
-            }
-        }
-    }
-
     void fireOnDestroy(Connection connection) {
         for (ConnectionCustomizer connectionCustomizer : connectionCustomizers) {
             try {
@@ -309,65 +239,62 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
         }
     }
 
+
     /* Implementation of DataSource interface */
-    @Override
+
     public Connection getConnection() throws SQLException {
         if (isDisabled()) {
             throw new SQLException("JDBC connection pool '" + getUniqueName() + "' is disabled, cannot get a connection from it");
         }
 
         init();
-        if (log.isDebugEnabled()) { log.debug("acquiring connection from " + this); }
+        if (log.isDebugEnabled()) log.debug("acquiring connection from " + this);
         if (pool == null) {
-            if (log.isDebugEnabled()) { log.debug("pool is closed, returning null connection"); }
+            if (log.isDebugEnabled()) log.debug("pool is closed, returning null connection");
             return null;
         }
 
         try {
-            Connection conn = (Connection) pool.getConnectionHandle();
-            if (log.isDebugEnabled()) { log.debug("acquired connection from " + this); }
-            return conn;
+        	InvocationHandler connectionHandle = (InvocationHandler) pool.getConnectionHandle();
+            if (log.isDebugEnabled()) log.debug("acquired connection from " + this);
+            return (Connection) Proxy.newProxyInstance(ClassLoaderUtils.getClassLoader(), new Class[] { Connection.class }, connectionHandle);
         } catch (Exception ex) {
-            throw new SQLException("unable to get a connection from pool of " + this, ex);
+            throw (SQLException) new SQLException("unable to get a connection from pool of " + this).initCause(ex);
         }
     }
 
-    @Override
     public Connection getConnection(String username, String password) throws SQLException {
-        if (log.isDebugEnabled()) { log.debug("JDBC connections are pooled, username and password ignored"); }
+        if (log.isDebugEnabled()) log.debug("JDBC connections are pooled, username and password ignored");
         return getConnection();
     }
 
-    @Override
-	public String toString() {
+    public String toString() {
         return "a PoolingDataSource containing " + pool;
     }
 
 
     /* XAResourceProducer implementation */
-    @Override
+
     public XAResourceHolderState startRecovery() throws RecoveryException {
         init();
         if (recoveryConnectionHandle != null)
             throw new RecoveryException("recovery already in progress on " + this);
 
         try {
-            recoveryConnectionHandle = (Connection) pool.getConnectionHandle(false);
-            PooledConnectionProxy pooledConnection = (PooledConnectionProxy) recoveryConnectionHandle;
-            recoveryXAResourceHolder = pooledConnection.getPooledConnection().createRecoveryXAResourceHolder();
-            return new XAResourceHolderState(pooledConnection.getPooledConnection(), this);
+            recoveryConnectionHandle = (JdbcConnectionHandle) pool.getConnectionHandle(false);
+            recoveryXAResourceHolder = recoveryConnectionHandle.getPooledConnection().createRecoveryXAResourceHolder();
+            return new XAResourceHolderState(recoveryConnectionHandle.getPooledConnection(), this);
         } catch (Exception ex) {
             throw new RecoveryException("cannot start recovery on " + this, ex);
         }
     }
 
-    @Override
     public void endRecovery() throws RecoveryException {
         if (recoveryConnectionHandle == null)
             return;
 
         try {
-            if (log.isDebugEnabled()) { log.debug("recovery xa resource is being closed: " + recoveryXAResourceHolder); }
+            if (log.isDebugEnabled()) log.debug("recovery xa resource is being closed: " + recoveryXAResourceHolder);
             recoveryConnectionHandle.close();
         } catch (Exception ex) {
             throw new RecoveryException("error ending recovery on " + this, ex);
@@ -381,30 +308,23 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
         }
     }
 
-    @Override
     public void setFailed(boolean failed) {
-        if (pool != null) {
-            pool.setFailed(failed);
-        }
+        pool.setFailed(failed);
     }
 
-    @Override
     public boolean isFailed() {
-        return (pool != null ? pool.isFailed() : false);
+        return pool.isFailed();
     }
 
-    @Override
     public void close() {
         if (pool == null) {
-            if (log.isDebugEnabled()) { log.debug("trying to close already closed PoolingDataSource " + getUniqueName()); }
+            if (log.isDebugEnabled()) log.debug("trying to close already closed PoolingDataSource " + getUniqueName());
             return;
         }
 
-        if (log.isDebugEnabled()) { log.debug("closing " + this); }
+        if (log.isDebugEnabled()) log.debug("closing " + this);
         pool.close();
         pool = null;
-
-        xaResourceHolderMap.clear();
 
         connectionCustomizers.clear();
 
@@ -414,19 +334,15 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
         ResourceRegistrar.unregister(this);
     }
 
-    @Override
-    public JdbcPooledConnection createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
+    public XAStatefulHolder createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
         if (!(xaFactory instanceof XADataSource))
             throw new IllegalArgumentException("class '" + xaFactory.getClass().getName() + "' does not implement " + XADataSource.class.getName());
         XADataSource xads = (XADataSource) xaFactory;
-        JdbcPooledConnection pooledConnection = new JdbcPooledConnection(this, xads.getXAConnection());
-        xaResourceHolderMap.put(pooledConnection.getXAResource(), pooledConnection);
-        return pooledConnection;
+        return new JdbcPooledConnection(this, xads.getXAConnection());
     }
 
-    @Override
-    public JdbcPooledConnection findXAResourceHolder(XAResource xaResource) {
-        return xaResourceHolderMap.get(xaResource);
+    public XAResourceHolder findXAResourceHolder(XAResource xaResource) {
+        return pool.findXAResourceHolder(xaResource);
     }
 
 
@@ -435,9 +351,8 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
      * the unique name as {@link javax.naming.RefAddr}.
      * @return a reference to this {@link PoolingDataSource}.
      */
-    @Override
     public Reference getReference() throws NamingException {
-        if (log.isDebugEnabled()) { log.debug("creating new JNDI reference of " + this); }
+        if (log.isDebugEnabled()) log.debug("creating new JNDI reference of " + this);
         return new Reference(
                 PoolingDataSource.class.getName(),
                 new StringRefAddr("uniqueName", getUniqueName()),
@@ -447,61 +362,46 @@ public class PoolingDataSource extends ResourceBean implements DataSource, XARes
 
     /* DataSource implementation */
 
-    @Override
     public int getLoginTimeout() throws SQLException {
         return xaDataSource.getLoginTimeout();
     }
 
-    @Override
     public void setLoginTimeout(int seconds) throws SQLException {
         xaDataSource.setLoginTimeout(seconds);
     }
 
-    @Override
     public PrintWriter getLogWriter() throws SQLException {
         return xaDataSource.getLogWriter();
     }
 
-    @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
         xaDataSource.setLogWriter(out);
     }
 
     /* java.sql.Wrapper implementation */
 
-    @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return iface.isAssignableFrom(xaDataSource.getClass());
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        if (isWrapperFor(iface)) {
+        if (iface.isAssignableFrom(xaDataSource.getClass())) {
             return (T) xaDataSource;
-        }
-        throw new SQLException(getClass().getName() + " is not a wrapper for " + iface);
+	    }
+	    throw new SQLException(getClass().getName() + " is not a wrapper for " + iface);
 	}
 
 	/* management */
 
-    @Override
-    public int getInPoolSize() {
+    public long getInPoolSize() {
         return pool.inPoolSize();
     }
 
-    @Override
-    public int getTotalPoolSize() {
+    public long getTotalPoolSize() {
         return pool.totalPoolSize();
     }
 
-    @Override
     public void reset() throws Exception {
         pool.reset();
-    }
-
-    public void unregister(JdbcPooledConnection xaResourceHolder) {
-        xaResourceHolderMap.remove(xaResourceHolder.getXAResource());
-
     }
 }

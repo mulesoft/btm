@@ -1,28 +1,33 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.utils;
 
 import junit.framework.TestCase;
 
-import java.util.Map;
 import java.util.Properties;
+import java.util.Map;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class PropertyUtilsTest extends TestCase {
 
@@ -50,60 +55,9 @@ public class PropertyUtilsTest extends TestCase {
         }
     }
 
-    public void testSetMultipleProperties() throws Exception {
-        Destination destination = new Destination();
-
-        PropertyUtils.setProperty(destination, "props.key1", "value1");
-        PropertyUtils.setProperty(destination, "props.key2", "value2");
-        assertEquals("value1", destination.getProps().getProperty("key1"));
-        assertEquals("value2", destination.getProps().getProperty("key2"));
-    }
-
-    public void testSetClonedProperties() throws Exception {
-        Destination destination = new Destination();
-
-        PropertyUtils.setProperty(destination, "clonedProps.key", "value");
-        assertEquals("value", destination.getClonedProps().getProperty("key"));
-    }
-
-    public void testSetMultipleClonedProperties() throws Exception {
-        Destination destination = new Destination();
-
-        PropertyUtils.setProperty(destination, "clonedProps.key1", "value1");
-        PropertyUtils.setProperty(destination, "clonedProps.key2", "value2");
-        assertEquals("value1", destination.getClonedProps().getProperty("key1"));
-        assertEquals("value2", destination.getClonedProps().getProperty("key2"));
-    }
-
-    public void testSetPropertiesDirectly() throws Exception {
-        Destination destination = new Destination();
-
-        Properties p = new Properties();
-        p.setProperty("key", "value");
-
-        PropertyUtils.setProperty(destination, "props", p);
-        assertEquals("value", destination.getProps().getProperty("key"));
-    }
-
-    public void testSetClonedPropertiesDirectly() throws Exception {
-        Destination destination = new Destination();
-
-        Properties p = new Properties();
-        p.setProperty("key", "value");
-
-        PropertyUtils.setProperty(destination, "clonedProps", p);
-        assertEquals("value", destination.getClonedProps().getProperty("key"));
-    }
-
-    public void testSettingKeyForPropertiesObject() throws Exception {
-        Properties p = new Properties();
-        PropertyUtils.setProperty(p, "key", "value");
-        assertEquals("value", p.getProperty("key"));
-    }
-
     public void testSetPropertiesObjectLongKey() throws Exception {
         PrivateDestination destination = new PrivateDestination();
-
+        
         PropertyUtils.setProperty(destination, "props.key", "value1");
         PropertyUtils.setProperty(destination, "props.a.dotted.key", "value2");
 
@@ -123,12 +77,12 @@ public class PropertyUtilsTest extends TestCase {
 
         Map map = PropertyUtils.getProperties(destination);
 
-        assertEquals(13, map.size());
+        assertEquals(12, map.size());
         assertEquals("one", map.get("props.number1"));
         assertEquals("two", map.get("props.number2"));
         assertEquals(new Integer(10), map.get("anInteger"));
-        assertEquals(Boolean.TRUE, map.get("aBoolean"));
-        assertEquals(Boolean.FALSE, map.get("anotherBoolean"));
+        assertEquals(new Boolean(true), map.get("aBoolean"));
+        assertEquals(new Boolean(false), map.get("anotherBoolean"));
         assertNull(map.get("subDestination"));
     }
 
@@ -177,7 +131,6 @@ public class PropertyUtilsTest extends TestCase {
 
     public static class Destination {
         private Properties props;
-        private Properties clonedProps;
         private Destination subDestination;
         private int anInteger;
         private int aWriteOnlyInt;
@@ -196,14 +149,6 @@ public class PropertyUtilsTest extends TestCase {
 
         public void setProps(Properties props) {
             this.props = props;
-        }
-
-        public Properties getClonedProps() {
-            return (clonedProps == null) ? null : (Properties) clonedProps.clone();
-        }
-
-        public void setClonedProps(Properties props) {
-            this.clonedProps = (props == null) ? null : (Properties) props.clone();
         }
 
         public Destination getSubDestination() {

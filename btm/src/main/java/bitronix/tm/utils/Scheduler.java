@@ -1,37 +1,33 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.utils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Positional object container. Objects can be added to a scheduler at a certain position (or priority) and can be
  * retrieved later on in their position + added order. All the objects of a scheduler can be iterated in order or
  * objects of a cetain position can be retrieved for iteration.
  *
- * @author Ludovic Orban
- * @param <T> the type the scheduler handles
+ * @author lorban
  */
 public class Scheduler<T> implements Iterable<T> {
 
@@ -39,8 +35,8 @@ public class Scheduler<T> implements Iterable<T> {
     public static final Integer ALWAYS_FIRST_POSITION = Integer.MIN_VALUE;
     public static final Integer ALWAYS_LAST_POSITION = Integer.MAX_VALUE;
 
-    private final List<Integer> keys = new ArrayList<Integer>();
-    private final Map<Integer, List<T>> objects = new TreeMap<Integer, List<T>>();
+    private List<Integer> keys = new ArrayList<Integer>();
+    private Map<Integer, List<T>> objects = new TreeMap<Integer, List<T>>();
     private int size = 0;
 
 
@@ -97,7 +93,6 @@ public class Scheduler<T> implements Iterable<T> {
         return size;
     }
 
-    @Override
     public Iterator<T> iterator() {
         return new SchedulerNaturalOrderIterator();
     }
@@ -106,7 +101,6 @@ public class Scheduler<T> implements Iterable<T> {
         return new SchedulerReverseOrderIterator();
     }
 
-    @Override
     public String toString() {
         return "a Scheduler with " + size() + " object(s) in " + getNaturalOrderPositions().size() + " position(s)";
     }
@@ -123,7 +117,6 @@ public class Scheduler<T> implements Iterable<T> {
             this.nextKeyIndex = 0;
         }
 
-        @Override
         public void remove() {
             synchronized (Scheduler.this) {
                 if (objectsOfCurrentKey == null)
@@ -131,7 +124,7 @@ public class Scheduler<T> implements Iterable<T> {
 
                 objectsOfCurrentKeyIndex--;
                 objectsOfCurrentKey.remove(objectsOfCurrentKeyIndex);
-                if (objectsOfCurrentKey.isEmpty()) {
+                if (objectsOfCurrentKey.size() == 0) {
                     // there are no more objects in the current position's list -> remove it
                     nextKeyIndex--;
                     Integer key = Scheduler.this.keys.get(nextKeyIndex);
@@ -143,7 +136,6 @@ public class Scheduler<T> implements Iterable<T> {
             }
         }
 
-        @Override
         public boolean hasNext() {
             synchronized (Scheduler.this) {
                 if (objectsOfCurrentKey == null || objectsOfCurrentKeyIndex >= objectsOfCurrentKey.size()) {
@@ -166,7 +158,6 @@ public class Scheduler<T> implements Iterable<T> {
             }
         }
 
-        @Override
         public T next() {
             synchronized (Scheduler.this) {
                 if (!hasNext())
@@ -185,12 +176,9 @@ public class Scheduler<T> implements Iterable<T> {
         private int objectsOfCurrentKeyIndex;
 
         private SchedulerReverseOrderIterator() {
-            synchronized (Scheduler.this) {
-                this.nextKeyIndex = Scheduler.this.keys.size() -1;
-            }
+            this.nextKeyIndex = Scheduler.this.keys.size() -1;
         }
 
-        @Override
         public void remove() {
             synchronized (Scheduler.this) {
                 if (objectsOfCurrentKey == null)
@@ -198,7 +186,7 @@ public class Scheduler<T> implements Iterable<T> {
 
                 objectsOfCurrentKeyIndex--;
                 objectsOfCurrentKey.remove(objectsOfCurrentKeyIndex);
-                if (objectsOfCurrentKey.isEmpty()) {
+                if (objectsOfCurrentKey.size() == 0) {
                     // there are no more objects in the current position's list -> remove it
                     Integer key = Scheduler.this.keys.get(nextKeyIndex+1);
                     Scheduler.this.keys.remove(nextKeyIndex+1);
@@ -209,7 +197,6 @@ public class Scheduler<T> implements Iterable<T> {
             }
         }
 
-        @Override
         public boolean hasNext() {
             synchronized (Scheduler.this) {
                 if (objectsOfCurrentKey == null || objectsOfCurrentKeyIndex >= objectsOfCurrentKey.size()) {
@@ -232,7 +219,6 @@ public class Scheduler<T> implements Iterable<T> {
             }
         }
 
-        @Override
         public T next() {
             synchronized (Scheduler.this) {
                 if (!hasNext())

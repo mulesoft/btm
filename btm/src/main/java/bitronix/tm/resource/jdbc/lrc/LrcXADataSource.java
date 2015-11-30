@@ -1,26 +1,31 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jdbc.lrc;
 
-import bitronix.tm.resource.jdbc.proxy.JdbcProxyFactory;
 import bitronix.tm.utils.ClassLoaderUtils;
 
 import javax.sql.XAConnection;
 import javax.sql.XADataSource;
 import java.io.PrintWriter;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
@@ -29,8 +34,7 @@ import java.util.Properties;
 /**
  * XADataSource implementation for a non-XA JDBC resource emulating XA with Last Resource Commit.
  *
- * @author Ludovic Orban
- * @author Brett Wooldridge
+ * @author lorban, brettw
  */
 public class LrcXADataSource implements XADataSource {
 
@@ -43,12 +47,10 @@ public class LrcXADataSource implements XADataSource {
     public LrcXADataSource() {
     }
 
-    @Override
     public int getLoginTimeout() throws SQLException {
         return loginTimeout;
     }
 
-    @Override
     public void setLoginTimeout(int seconds) throws SQLException {
         this.loginTimeout = seconds;
     }
@@ -85,48 +87,43 @@ public class LrcXADataSource implements XADataSource {
         this.password = password;
     }
 
-    @Override
     public PrintWriter getLogWriter() throws SQLException {
         return null;
     }
 
-    @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
     }
 
-    @Override
     public XAConnection getXAConnection() throws SQLException {
         try {
-            Class<?> driverClazz = ClassLoaderUtils.loadClass(driverClassName);
+            Class driverClazz = ClassLoaderUtils.loadClass(driverClassName);
             Driver driver = (Driver) driverClazz.newInstance();
             Properties props = new Properties();
             if (user != null) props.setProperty("user", user);
             if (password != null) props.setProperty("password", password);
             Connection connection = driver.connect(url, props);
-            XAConnection xaConnection = JdbcProxyFactory.INSTANCE.getProxyXaConnection(connection);
-            return xaConnection;
+            LrcXAConnection lrcXAConnection = new LrcXAConnection(connection);
+            return (XAConnection) Proxy.newProxyInstance(ClassLoaderUtils.getClassLoader(), new Class[] { XAConnection.class }, lrcXAConnection);
         } catch (Exception ex) {
-            throw new SQLException("unable to connect to non-XA resource " + driverClassName, ex);
+            throw (SQLException) new SQLException("unable to connect to non-XA resource " + driverClassName).initCause(ex);
         }
     }
 
-    @Override
     public XAConnection getXAConnection(String user, String password) throws SQLException {
         try {
-            Class<?> driverClazz = ClassLoaderUtils.loadClass(driverClassName);
+            Class driverClazz = ClassLoaderUtils.loadClass(driverClassName);
             Driver driver = (Driver) driverClazz.newInstance();
             Properties props = new Properties();
             props.setProperty("user", user);
             props.setProperty("password", password);
             Connection connection = driver.connect(url, props);
-            XAConnection xaConnection = JdbcProxyFactory.INSTANCE.getProxyXaConnection(connection);
-            return xaConnection;
+            LrcXAConnection lrcXAConnection = new LrcXAConnection(connection);
+            return (XAConnection) Proxy.newProxyInstance(ClassLoaderUtils.getClassLoader(), new Class[] { XAConnection.class }, lrcXAConnection);
         } catch (Exception ex) {
-            throw new SQLException("unable to connect to non-XA resource " + driverClassName, ex);
+            throw (SQLException) new SQLException("unable to connect to non-XA resource " + driverClassName).initCause(ex);
         }
     }
 
-    @Override
     public String toString() {
         return "a JDBC LrcXADataSource on " + driverClassName + " with URL " + url;
     }

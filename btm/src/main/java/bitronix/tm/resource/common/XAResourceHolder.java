@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.common;
 
@@ -20,15 +25,16 @@ import bitronix.tm.internal.XAResourceHolderState;
 import bitronix.tm.utils.Uid;
 
 import javax.transaction.xa.XAResource;
+import java.util.Map;
 
 /**
  * {@link XAResource} wrappers must implement this interface. It defines a way to get access to the transactional
  * state of this {@link XAResourceHolder}.
  *
  * @see XAResourceHolderState
- * @author Ludovic Orban
+ * @author lorban
  */
-public interface XAResourceHolder<T extends XAResourceHolder<T>> extends XAStatefulHolder<T> {
+public interface XAResourceHolder extends XAStatefulHolder {
 
     /**
      * Get the vendor's {@link XAResource} implementation of the wrapped resource.
@@ -37,33 +43,12 @@ public interface XAResourceHolder<T extends XAResourceHolder<T>> extends XAState
     public XAResource getXAResource();
 
     /**
-     * This method implements a standard Visitor Pattern.  For the specified GTRID, the
-     * provided {@link XAResourceHolderStateVisitor}'s visit() method is called for each matching
-     * {@link XAResourceHolderState} in the order they were added.  This method was introduced
-     * as a replacement for the old getXAResourceHolderStatesForGtrid(Uid) method.  The old
-     * getXAResourceHolderStatesForGtrid method exported an internal collection which was unsynchronized
-     * yet was iterated over by the callers.  Using the Visitor Pattern allows us to perform the same
-     * iteration within the context of a lock, and avoids exposing internal state and implementation
-     * details to callers.
-     * @param gtrid the GTRID of the transaction state to visit {@link XAResourceHolderState}s for
-     * @param visitor a {@link XAResourceHolderStateVisitor} instance
+     * Get all the {@link XAResourceHolderState}s of this wrapped resource for a specific GTRID.
+     * <p>The returned Map is guaranteed to return states in order they were added when its values are iterated.</p>
+     * @param gtrid the GTRID of the transaction state to add.
+     * @return the {@link XAResourceHolderState}.
      */
-    public void acceptVisitorForXAResourceHolderStates(Uid gtrid, XAResourceHolderStateVisitor visitor);
-
-    /**
-     * Checks whether there are {@link XAResourceHolderState}s for the specified GTRID.
-     * @param gtrid the GTRID of the transaction state to check existence for
-     * @return true if there are {@link XAResourceHolderState}s, false otherwise
-     */
-    public boolean isExistXAResourceHolderStatesForGtrid(Uid gtrid);
-
-    /**
-     * Get a count of {@link XAResourceHolderState}s for the specified GTRID.
-     * @param gtrid the GTRID to get a {@link XAResourceHolderState} count for
-     * @return the count of {@link XAResourceHolderState}s, or 0 if there are no states for the
-     * specified GTRID
-     */
-    public int getXAResourceHolderStateCountForGtrid(Uid gtrid);
+    public Map<Uid, XAResourceHolderState> getXAResourceHolderStatesForGtrid(Uid gtrid);
 
     /**
      * Add a {@link XAResourceHolderState} of this wrapped resource.
@@ -85,7 +70,7 @@ public interface XAResourceHolder<T extends XAResourceHolder<T>> extends XAState
      * @param xaResourceHolder the {@link XAResourceHolder} to look for.
      * @return true if the {@link XAResourceHolder} is enlisted in some transaction, false otherwise.
      */
-    public boolean hasStateForXAResource(XAResourceHolder<? extends XAResourceHolder> xaResourceHolder);
+    public boolean hasStateForXAResource(XAResourceHolder xaResourceHolder);
 
     /**
      * Get the ResourceBean which created this XAResourceHolder.

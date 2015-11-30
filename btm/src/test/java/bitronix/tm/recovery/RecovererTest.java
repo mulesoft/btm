@@ -1,60 +1,52 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.recovery;
 
-import bitronix.tm.BitronixTransaction;
-import bitronix.tm.BitronixTransactionManager;
-import bitronix.tm.BitronixXid;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.internal.TransactionStatusChangeListener;
-import bitronix.tm.journal.Journal;
-import bitronix.tm.mock.events.Event;
-import bitronix.tm.mock.events.EventRecorder;
-import bitronix.tm.mock.events.JournalLogEvent;
-import bitronix.tm.mock.resource.MockJournal;
-import bitronix.tm.mock.resource.MockXAResource;
-import bitronix.tm.mock.resource.MockXid;
-import bitronix.tm.mock.resource.jdbc.MockitoXADataSource;
-import bitronix.tm.resource.ResourceRegistrar;
-import bitronix.tm.resource.common.ResourceBean;
-import bitronix.tm.resource.jdbc.JdbcPooledConnection;
-import bitronix.tm.resource.jdbc.PooledConnectionProxy;
-import bitronix.tm.resource.jdbc.PoolingDataSource;
-import bitronix.tm.utils.Uid;
-import bitronix.tm.utils.UidGenerator;
-import junit.framework.TestCase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.File;
+import java.lang.reflect.*;
+import java.sql.Connection;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.transaction.Status;
-import javax.transaction.xa.XAResource;
-import javax.transaction.xa.Xid;
-import java.io.File;
-import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import javax.transaction.xa.*;
+
+import junit.framework.TestCase;
+
+import org.slf4j.*;
+
+import bitronix.tm.*;
+import bitronix.tm.internal.TransactionStatusChangeListener;
+import bitronix.tm.journal.Journal;
+import bitronix.tm.mock.events.*;
+import bitronix.tm.mock.resource.*;
+import bitronix.tm.mock.resource.jdbc.MockitoXADataSource;
+import bitronix.tm.resource.ResourceRegistrar;
+import bitronix.tm.resource.common.*;
+import bitronix.tm.resource.jdbc.*;
+import bitronix.tm.utils.*;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class RecovererTest extends TestCase {
     private final static Logger log = LoggerFactory.getLogger(RecovererTest.class);
@@ -63,11 +55,11 @@ public class RecovererTest extends TestCase {
     private PoolingDataSource pds;
     private Journal journal;
 
-    @Override
+
     protected void setUp() throws Exception {
-        Iterator<String> it = ResourceRegistrar.getResourcesUniqueNames().iterator();
+        Iterator it = ResourceRegistrar.getResourcesUniqueNames().iterator();
         while (it.hasNext()) {
-            String name = it.next();
+            String name = (String) it.next();
             ResourceRegistrar.unregister(ResourceRegistrar.get(name));
         }
 
@@ -80,12 +72,11 @@ public class RecovererTest extends TestCase {
 
         new File(TransactionManagerServices.getConfiguration().getLogPart1Filename()).delete();
         new File(TransactionManagerServices.getConfiguration().getLogPart2Filename()).delete();
-        EventRecorder.clear();
 
         Connection connection1 = pds.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection1;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
         xaResource = (MockXAResource) handle.getPooledConnection().getXAResource();
-        connection1.close();
+        handle.close();
 
         // test the clustered recovery as its logic is more complex and covers the non-clustered logic
         TransactionManagerServices.getConfiguration().setCurrentNodeOnlyRecovery(true);
@@ -95,7 +86,7 @@ public class RecovererTest extends TestCase {
         journal.open();
     }
 
-    @Override
+
     protected void tearDown() throws Exception {
         if (TransactionManagerServices.isTransactionManagerRunning())
             TransactionManagerServices.getTransactionManager().shutdown();
@@ -156,7 +147,7 @@ public class RecovererTest extends TestCase {
         Xid xid2 = new MockXid(2, UidGenerator.generateUid().getArray(), BitronixXid.FORMAT_ID);
         xaResource.addInDoubtXid(xid2);
 
-        Set<String> names = new HashSet<String>();
+        Set names = new HashSet();
         names.add(pds.getUniqueName());
         journal.log(Status.STATUS_COMMITTING, new Uid(xid0.getGlobalTransactionId()), names);
         journal.log(Status.STATUS_COMMITTING, new Uid(xid1.getGlobalTransactionId()), names);
@@ -180,7 +171,7 @@ public class RecovererTest extends TestCase {
         Xid xid2 = new MockXid(2, UidGenerator.generateUid().getArray(), BitronixXid.FORMAT_ID);
         xaResource.addInDoubtXid(xid2);
 
-        Set<String> names = new HashSet<String>();
+        Set names = new HashSet();
         names.add(pds.getUniqueName());
         journal.log(Status.STATUS_COMMITTING, new Uid(xid0.getGlobalTransactionId()), names);
         journal.log(Status.STATUS_COMMITTING, new Uid(xid1.getGlobalTransactionId()), names);
@@ -228,7 +219,7 @@ public class RecovererTest extends TestCase {
         Uid uid0 = UidGenerator.generateUid();
         Xid xid0 = new MockXid(0, uid0.getArray(), BitronixXid.FORMAT_ID);
         xaResource.addInDoubtXid(xid0);
-        Set<String> names = new HashSet<String>();
+        Set names = new HashSet();
         names.add(pds.getUniqueName());
         journal.log(Status.STATUS_COMMITTING, new Uid(xid0.getGlobalTransactionId()), names);
 
@@ -239,7 +230,7 @@ public class RecovererTest extends TestCase {
         Xid xid1 = new MockXid(1, UidGenerator.generateUid().getArray(), BitronixXid.FORMAT_ID);
         xaResource.addInDoubtXid(xid1);
 
-        names = new HashSet<String>();
+        names = new HashSet();
         names.add(pds.getUniqueName());
         journal.log(Status.STATUS_COMMITTING, new Uid(xid1.getGlobalTransactionId()), names);
 
@@ -260,7 +251,7 @@ public class RecovererTest extends TestCase {
         final Xid xid0 = new MockXid(0, UidGenerator.generateUid().getArray(), BitronixXid.FORMAT_ID);
         xaResource.addInDoubtXid(xid0);
 
-        Set<String> names = new HashSet<String>();
+        Set names = new HashSet();
         names.add("no-such-registered-resource");
         journal.log(Status.STATUS_COMMITTING, new Uid(xid0.getGlobalTransactionId()), names);
         assertEquals(1, TransactionManagerServices.getJournal().collectDanglingRecords().size());
@@ -277,9 +268,8 @@ public class RecovererTest extends TestCase {
 
         // the TM is running, adding this resource will kick incremental recovery on it
         PoolingDataSource pds = new PoolingDataSource() {
-            @Override
-            public JdbcPooledConnection createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
-                JdbcPooledConnection pc = super.createPooledConnection(xaFactory, bean);
+            public XAStatefulHolder createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
+                JdbcPooledConnection pc = (JdbcPooledConnection) super.createPooledConnection(xaFactory, bean);
                 MockXAResource xaResource = (MockXAResource) pc.getXAResource();
                 xaResource.addInDoubtXid(UidGenerator.generateXid(new Uid(xid0.getGlobalTransactionId())));
                 return pc;
@@ -292,9 +282,9 @@ public class RecovererTest extends TestCase {
         pds.init();
 
         Connection connection = pds.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection);
         XAResource xaResource = handle.getPooledConnection().getXAResource();
-        connection.close();
+        handle.close();
 
         assertEquals(0, xaResource.recover(XAResource.TMSTARTRSCAN | XAResource.TMENDRSCAN).length);
         assertEquals(0, TransactionManagerServices.getJournal().collectDanglingRecords().size());
@@ -309,7 +299,6 @@ public class RecovererTest extends TestCase {
         // change disk journal into mock journal
         Field field = TransactionManagerServices.class.getDeclaredField("journalRef");
         field.setAccessible(true);
-        @SuppressWarnings("unchecked")
         AtomicReference<Journal> journalRef = (AtomicReference<Journal>) field.get(TransactionManagerServices.class);
         journalRef.set(new MockJournal());
 
@@ -322,7 +311,6 @@ public class RecovererTest extends TestCase {
 
             BitronixTransaction tx = btm.getCurrentTransaction();
             tx.addTransactionStatusChangeListener(new TransactionStatusChangeListener() {
-                @Override
                 public void statusChanged(int oldStatus, int newStatus) {
                     if (newStatus != Status.STATUS_COMMITTING)
                         return;
@@ -338,7 +326,7 @@ public class RecovererTest extends TestCase {
             Connection c = pds.getConnection();
             c.createStatement();
             c.close();
-
+    
             xaResource.addInDoubtXid(new MockXid(new byte[] {0, 1, 2}, tx.getResourceManager().getGtrid().getArray(), BitronixXid.FORMAT_ID));
 
             btm.commit();
@@ -370,7 +358,7 @@ public class RecovererTest extends TestCase {
         Recoverer recoverer = new Recoverer();
         xaResource.setRecoveryDelay(1000);
 
-        List<Thread> threads = new ArrayList<Thread>();
+        List threads = new ArrayList();
 
         //create
         for (int i=0; i< THREAD_COUNT;i++) {
@@ -380,17 +368,17 @@ public class RecovererTest extends TestCase {
 
         //start
         for (int i=0; i< THREAD_COUNT;i++) {
-            Thread t = threads.get(i);
+            Thread t = (Thread) threads.get(i);
             t.start();
         }
 
         //join
         for (int i=0; i< THREAD_COUNT;i++) {
-            Thread t = threads.get(i);
+            Thread t = (Thread) threads.get(i);
             t.join();
         }
 
         assertEquals(1, recoverer.getExecutionsCount());
     }
-
+    
 }

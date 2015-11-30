@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jms;
 
@@ -27,7 +32,7 @@ import javax.transaction.SystemException;
 /**
  * {@link MessageProducer} wrapper that adds XA enlistment semantics.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class MessageProducerWrapper implements MessageProducer {
 
@@ -48,7 +53,7 @@ public class MessageProducerWrapper implements MessageProducer {
     /**
      * Enlist this session into the current transaction if automaticEnlistingEnabled = true for this resource.
      * If no transaction is running then this method does nothing.
-     * @throws JMSException if an exception occurs
+     * @throws JMSException
      */
     protected void enlistResource() throws JMSException {
         if (poolingConnectionFactory.getAutomaticEnlistingEnabled()) {
@@ -63,95 +68,78 @@ public class MessageProducerWrapper implements MessageProducer {
         } // if getAutomaticEnlistingEnabled
     }
 
-    @Override
     public String toString() {
         return "a MessageProducerWrapper of " + session;
     }
 
     /* MessageProducer with special XA semantics implementation */
 
-    @Override
     public void send(Message message) throws JMSException {
         enlistResource();
         getMessageProducer().send(message);
     }
 
-    @Override
     public void send(Message message, int deliveryMode, int priority, long timeToLive) throws JMSException {
         enlistResource();
         getMessageProducer().send(message, deliveryMode, priority, timeToLive);
     }
 
-    @Override
     public void send(Destination destination, Message message) throws JMSException {
         enlistResource();
         getMessageProducer().send(destination, message);
     }
 
-    @Override
     public void send(Destination destination, Message message, int deliveryMode, int priority, long timeToLive) throws JMSException {
         enlistResource();
         getMessageProducer().send(destination, message, deliveryMode, priority, timeToLive);
     }
 
-    @Override
     public void close() throws JMSException {
         // do nothing as the close is handled by the session handle
     }
 
     /* dumb wrapping of MessageProducer methods */
 
-    @Override
     public void setDisableMessageID(boolean value) throws JMSException {
         getMessageProducer().setDisableMessageID(value);
     }
 
-    @Override
     public boolean getDisableMessageID() throws JMSException {
         return getMessageProducer().getDisableMessageID();
     }
 
-    @Override
     public void setDisableMessageTimestamp(boolean value) throws JMSException {
         getMessageProducer().setDisableMessageTimestamp(value);
     }
 
-    @Override
     public boolean getDisableMessageTimestamp() throws JMSException {
         return getMessageProducer().getDisableMessageTimestamp();
     }
 
-    @Override
     public void setDeliveryMode(int deliveryMode) throws JMSException {
         getMessageProducer().setDeliveryMode(deliveryMode);
     }
 
-    @Override
     public int getDeliveryMode() throws JMSException {
         return getMessageProducer().getDeliveryMode();
     }
 
-    @Override
     public void setPriority(int defaultPriority) throws JMSException {
         getMessageProducer().setPriority(defaultPriority);
     }
 
-    @Override
     public int getPriority() throws JMSException {
         return getMessageProducer().getPriority();
     }
 
-    @Override
     public void setTimeToLive(long timeToLive) throws JMSException {
         getMessageProducer().setTimeToLive(timeToLive);
     }
 
-    @Override
     public long getTimeToLive() throws JMSException {
         return getMessageProducer().getTimeToLive();
     }
 
-    @Override
     public Destination getDestination() throws JMSException {
         return getMessageProducer().getDestination();
     }

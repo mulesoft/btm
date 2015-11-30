@@ -1,40 +1,46 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.recovery;
 
+import bitronix.tm.internal.XAResourceHolderState;
 import bitronix.tm.BitronixXid;
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.internal.XAResourceHolderState;
-import bitronix.tm.utils.Decoder;
 import bitronix.tm.utils.Uid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import bitronix.tm.utils.Decoder;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reovery helper methods.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class RecoveryHelper {
 
@@ -49,35 +55,35 @@ public class RecoveryHelper {
     public static Set<BitronixXid> recover(XAResourceHolderState xaResourceHolderState) throws XAException {
         Set<BitronixXid> xids = new HashSet<BitronixXid>();
 
-        if (log.isDebugEnabled()) { log.debug("recovering with STARTRSCAN"); }
+        if (log.isDebugEnabled()) log.debug("recovering with STARTRSCAN");
         int xidCount;
         try {
             xidCount = recover(xaResourceHolderState, xids, XAResource.TMSTARTRSCAN);
         } catch (XAException ex) {
             if (xaResourceHolderState.getIgnoreRecoveryFailures()) {
-                if (log.isDebugEnabled()) { log.debug("ignoring recovery failure on resource " + xaResourceHolderState, ex); }
+                if (log.isDebugEnabled()) log.debug("ignoring recovery failure on resource " + xaResourceHolderState, ex);
                 return Collections.emptySet();
             }
             throw ex;
         }
-        if (log.isDebugEnabled()) { log.debug("STARTRSCAN recovered " + xidCount + " xid(s) on " + xaResourceHolderState); }
+        if (log.isDebugEnabled()) log.debug("STARTRSCAN recovered " + xidCount + " xid(s) on " + xaResourceHolderState);
 
         try {
             while (xidCount > 0) {
-                if (log.isDebugEnabled()) { log.debug("recovering with NOFLAGS"); }
+                if (log.isDebugEnabled()) log.debug("recovering with NOFLAGS");
                 xidCount = recover(xaResourceHolderState, xids, XAResource.TMNOFLAGS);
-                if (log.isDebugEnabled()) { log.debug("NOFLAGS recovered " + xidCount + " xid(s) on " + xaResourceHolderState); }
+                if (log.isDebugEnabled()) log.debug("NOFLAGS recovered " + xidCount + " xid(s) on " + xaResourceHolderState);
             }
         } catch (XAException ex) {
-            if (log.isDebugEnabled()) { log.debug("NOFLAGS recovery call failed", ex); }
+            if (log.isDebugEnabled()) log.debug("NOFLAGS recovery call failed", ex);
         }
 
         try {
-            if (log.isDebugEnabled()) { log.debug("recovering with ENDRSCAN"); }
+            if (log.isDebugEnabled()) log.debug("recovering with ENDRSCAN");
             xidCount = recover(xaResourceHolderState, xids, XAResource.TMENDRSCAN);
-            if (log.isDebugEnabled()) { log.debug("ENDRSCAN recovered " + xidCount + " xid(s) on " + xaResourceHolderState); }
+            if (log.isDebugEnabled()) log.debug("ENDRSCAN recovered " + xidCount + " xid(s) on " + xaResourceHolderState);
         } catch (XAException ex) {
-            if (log.isDebugEnabled()) { log.debug("ENDRSCAN recovery call failed", ex); }
+            if (log.isDebugEnabled()) log.debug("ENDRSCAN recovery call failed", ex);
         }
 
         return xids;
@@ -111,7 +117,7 @@ public class RecoveryHelper {
             BitronixXid bitronixXid = new BitronixXid(xid);
 
             if (currentNodeOnly) {
-                if (log.isDebugEnabled()) { log.debug("recovering XIDs generated by this node only - recovered XIDs' GTRID must contain this JVM uniqueId"); }
+                if (log.isDebugEnabled()) log.debug("recovering XIDs generated by this node only - recovered XIDs' GTRID must contain this JVM uniqueId");
                 byte[] extractedServerId = bitronixXid.getGlobalTransactionIdUid().extractServerId();
                 byte[] jvmUniqueId = TransactionManagerServices.getConfiguration().buildServerIdArray();
 
@@ -124,15 +130,15 @@ public class RecoveryHelper {
                     String extractedServerIdString = new String(extractedServerId);
                     String jvmUniqueIdString = new String(jvmUniqueId);
 
-                    if (log.isDebugEnabled()) { log.debug("skipping XID " + bitronixXid + " as its GTRID's serverId <" + extractedServerIdString + "> does not match this JVM unique ID <" + jvmUniqueIdString + ">"); }
+                    if (log.isDebugEnabled()) log.debug("skipping XID " + bitronixXid + " as its GTRID's serverId <" + extractedServerIdString + "> does not match this JVM unique ID <" + jvmUniqueIdString + ">");
                     continue;
                 }
             } else {
-                if (log.isDebugEnabled()) { log.debug("recovering all XIDs regardless of this JVM uniqueId"); }
+                if (log.isDebugEnabled()) log.debug("recovering all XIDs regardless of this JVM uniqueId");
             }
 
             if (alreadyRecoveredXids.contains(bitronixXid)) {
-                if (log.isDebugEnabled()) { log.debug("already recovered XID " + bitronixXid + ", skipping it"); }
+                if (log.isDebugEnabled()) log.debug("already recovered XID " + bitronixXid + ", skipping it");
                 continue;
             }
 
@@ -141,7 +147,7 @@ public class RecoveryHelper {
                 continue;
             }
 
-            if (log.isDebugEnabled()) { log.debug("recovered " + bitronixXid); }
+            if (log.isDebugEnabled()) log.debug("recovered " + bitronixXid);
             freshlyRecoveredXids.add(bitronixXid);
         } // for i < xids.length
 
@@ -190,7 +196,7 @@ public class RecoveryHelper {
         }
         if (forget) {
             try {
-                if (log.isDebugEnabled()) { log.debug("forgetting XID " + xid + " on resource " + uniqueName); }
+                if (log.isDebugEnabled()) log.debug("forgetting XID " + xid + " on resource " + uniqueName);
                 xaResourceHolderState.getXAResource().forget(xid);
             } catch (XAException ex) {
                 String extraErrorDetails = TransactionManagerServices.getExceptionAnalyzer().extractExtraXAExceptionDetails(ex);
@@ -240,7 +246,7 @@ public class RecoveryHelper {
         }
         if (forget) {
             try {
-                if (log.isDebugEnabled()) { log.debug("forgetting XID " + xid + " on resource " + uniqueName); }
+                if (log.isDebugEnabled()) log.debug("forgetting XID " + xid + " on resource " + uniqueName);
                 xaResourceHolderState.getXAResource().forget(xid);
             } catch (XAException ex) {
                 String extraErrorDetails = TransactionManagerServices.getExceptionAnalyzer().extractExtraXAExceptionDetails(ex);

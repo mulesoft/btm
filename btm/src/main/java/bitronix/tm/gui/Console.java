@@ -1,26 +1,30 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.gui;
 
 import bitronix.tm.BitronixXid;
 import bitronix.tm.Configuration;
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.journal.JournalRecord;
-import bitronix.tm.journal.TransactionLogRecord;
 import bitronix.tm.utils.Uid;
+import bitronix.tm.journal.TransactionLogRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +44,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * @author Ludovic Orban
+ * <p></p>
+ *
+ * @author lorban
  */
 public class Console extends JFrame {
 
@@ -48,17 +54,17 @@ public class Console extends JFrame {
 
     protected static final SimpleDateFormat dateFormatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS");
 
-    private final JTabbedPane tabbedPane = new JTabbedPane();
-    private final JTable rawViewTransactionsTable = new JTable();
-    private final JTable pendingViewTransactionsTable = new JTable();
-    private final JScrollPane rawTransactionsTableScrollpane = new JScrollPane(rawViewTransactionsTable);
-    private final JScrollPane pendingTransactionsTableScrollpane = new JScrollPane(pendingViewTransactionsTable);
-    private final ResourcesPanel resourcesPanel = new ResourcesPanel();
-    private final JPanel statusBarPanel = new JPanel();
-    private final JLabel statusLabel = new JLabel();
-    private final TransactionLogHeaderPanel transactionLogHeaderPanel1 = new TransactionLogHeaderPanel();
-    private final TransactionLogHeaderPanel transactionLogHeaderPanel2 = new TransactionLogHeaderPanel();
-    private final JMenuBar menuBar = new JMenuBar();
+    private JTabbedPane tabbedPane = new JTabbedPane();
+    private JTable rawViewTransactionsTable = new JTable();
+    private JTable pendingViewTransactionsTable = new JTable();
+    private JScrollPane rawTransactionsTableScrollpane = new JScrollPane(rawViewTransactionsTable);
+    private JScrollPane pendingTransactionsTableScrollpane = new JScrollPane(pendingViewTransactionsTable);
+    private ResourcesPanel resourcesPanel = new ResourcesPanel();
+    private JPanel statusBarPanel = new JPanel();
+    private JLabel statusLabel = new JLabel();
+    private TransactionLogHeaderPanel transactionLogHeaderPanel1 = new TransactionLogHeaderPanel();
+    private TransactionLogHeaderPanel transactionLogHeaderPanel2 = new TransactionLogHeaderPanel();
+    private JMenuBar menuBar = new JMenuBar();
 
 
     public Console() throws IOException {
@@ -93,23 +99,18 @@ public class Console extends JFrame {
         final JPopupMenu rawViewTransactionsTablePopupMenu = new JPopupMenu();
         final JCheckBoxMenuItem filterByGtridItem = new JCheckBoxMenuItem("Filter by GTRID");
         filterByGtridItem.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent e) {
                 filterByGtrid(filterByGtridItem.isSelected());
             }
         });
         rawViewTransactionsTablePopupMenu.add(filterByGtridItem);
         rawViewTransactionsTable.addMouseListener(new MouseListener() {
-            @Override
             public void mouseClicked(MouseEvent e) {
             }
-            @Override
             public void mouseEntered(MouseEvent e) {
             }
-            @Override
             public void mouseExited(MouseEvent e) {
             }
-            @Override
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     rawViewTransactionsTablePopupMenu.show(e.getComponent(), e.getX(), e.getY());
@@ -117,7 +118,6 @@ public class Console extends JFrame {
                     selectTableRow(rawViewTransactionsTable, row);
                 }
             }
-            @Override
             public void mouseReleased(MouseEvent e) {
                 mousePressed(e);
             }
@@ -136,35 +136,30 @@ public class Console extends JFrame {
         statusBarPanel.add(statusLabel);
 
         switchLogFilesItem.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent evt) {
                 switchLogFiles(configuration);
             }
         });
 
         countDuplicatedGtridsItem.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent evt) {
                 countDuplicatedGtrids();
             }
         });
 
         countByStatus.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent evt) {
                 countByStatus();
             }
         });
 
         bySequenceItem.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent evt) {
                 findBySequence();
             }
         });
 
         byGtridItem.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent evt) {
                 findByGtrid();
             }
@@ -189,40 +184,31 @@ public class Console extends JFrame {
         if (activeLogFile == null) {
             activeLogFile = pickCurrentLogFile(new File(configuration.getLogPart1Filename()), new File(configuration.getLogPart2Filename()));
             realActiveLogFile = activeLogFile;
-            if (log.isDebugEnabled()) { log.debug("active file is " + activeLogFile.getName()); }
+            if (log.isDebugEnabled()) log.debug("active file is " + activeLogFile.getName());
         }
         return activeLogFile;
     }
 
     public static File pickCurrentLogFile(File file1, File file2) throws IOException {
-        RandomAccessFile activeRandomAccessFile = null;
-        long timestamp1;
-        try {
-	        activeRandomAccessFile = new RandomAccessFile(file1, "r");
-	        int formatId1 = activeRandomAccessFile.readInt();
-	        if (formatId1 != BitronixXid.FORMAT_ID)
-	            throw new IOException("log file 1 " + file1.getName() + " is not a Bitronix Log file (incorrect header)");
-	        timestamp1 = activeRandomAccessFile.readLong();
-        }
-        finally {
-        	activeRandomAccessFile.close();
-        }
+        RandomAccessFile activeRandomAccessFile;
+        activeRandomAccessFile = new RandomAccessFile(file1, "r");
+        int formatId1 = activeRandomAccessFile.readInt();
+        if (formatId1 != BitronixXid.FORMAT_ID)
+            throw new IOException("log file 1 " + file1.getName() + " is not a Bitronix Log file (incorrect header)");
+        long timestamp1 = activeRandomAccessFile.readLong();
+        activeRandomAccessFile.close();
 
         activeRandomAccessFile = new RandomAccessFile(file2, "r");
-        try {
-	        int formatId2 = activeRandomAccessFile.readInt();
-	        if (formatId2 != BitronixXid.FORMAT_ID)
-	            throw new IOException("log file 2 " + file2.getName() + " is not a Bitronix Log file (incorrect header)");
-	        long timestamp2 = activeRandomAccessFile.readLong();
+        int formatId2 = activeRandomAccessFile.readInt();
+        if (formatId2 != BitronixXid.FORMAT_ID)
+            throw new IOException("log file 2 " + file2.getName() + " is not a Bitronix Log file (incorrect header)");
+        long timestamp2 = activeRandomAccessFile.readLong();
+        activeRandomAccessFile.close();
 
-	        if (timestamp1 > timestamp2) {
-	            return file1;
-	        } else {
-	            return file2;
-	        }
-        }
-        finally {
-        	activeRandomAccessFile.close();
+        if (timestamp1 > timestamp2) {
+            return file1;
+        } else {
+            return file2;
         }
     }
 
@@ -263,20 +249,20 @@ public class Console extends JFrame {
     private void countDuplicatedGtrids() {
         TransactionTableModel transactionTableModel = (TransactionTableModel) rawViewTransactionsTable.getModel();
 
-        HashMap<Uid, java.util.List<TransactionLogRecord>> gtrids = new HashMap<Uid, java.util.List<TransactionLogRecord>>();
-        HashMap<Uid, java.util.List<TransactionLogRecord>> redundantGtrids = new HashMap<Uid, java.util.List<TransactionLogRecord>>();
+        HashMap gtrids = new HashMap();
+        HashMap redundantGtrids = new HashMap();
 
         for (int i = 0; i < transactionTableModel.getRowCount(); i++) {
             TransactionLogRecord tlog = transactionTableModel.getRow(i);
             if (tlog.getStatus() == Status.STATUS_COMMITTING) {
                 Uid gtrid = tlog.getGtrid();
                 if (gtrids.containsKey(gtrid)) {
-                    java.util.List<TransactionLogRecord> tlogs = gtrids.get(gtrid);
+                    java.util.List tlogs = (java.util.List) gtrids.get(gtrid);
                     tlogs.add(tlog);
                     redundantGtrids.put(gtrid, tlogs);
                 }
                 else {
-                    java.util.List<TransactionLogRecord> tlogs = new ArrayList<TransactionLogRecord>();
+                    java.util.List tlogs = new ArrayList();
                     tlogs.add(tlog);
                     gtrids.put(gtrid, tlogs);
                 }
@@ -307,7 +293,7 @@ public class Console extends JFrame {
         int unknown = 0;
 
         for (int i = 0; i < transactionTableModel.getRowCount(); i++) {
-            JournalRecord tlog = transactionTableModel.getRow(i);
+            TransactionLogRecord tlog = transactionTableModel.getRow(i);
             switch (tlog.getStatus()) {
                 case Status.STATUS_ACTIVE:
                     active++;
@@ -394,11 +380,10 @@ public class Console extends JFrame {
 
     private void selectTLogMatchingSequence(TransactionTableModel transactionTableModel, int sequenceNumber, JTable table) {
         int startIndex = table.getSelectedRow() + 1;
-        Number sequence = sequenceNumber;
 
         for (int i = startIndex; i < transactionTableModel.getRowCount(); i++) {
-            JournalRecord tlog = transactionTableModel.getRow(i);
-            if (sequence.equals(tlog.getRecordProperties().get("sequenceNumber"))) {
+            TransactionLogRecord tlog = transactionTableModel.getRow(i);
+            if (tlog.getSequenceNumber() == sequenceNumber) {
                 selectTableRow(table, i);
                 return;
             }
@@ -407,8 +392,8 @@ public class Console extends JFrame {
         // if it is not found, search starting back at the beginning of the list up to where we previously started
         if (startIndex > 0) {
             for (int i = 0; i < startIndex; i++) {
-                JournalRecord tlog = transactionTableModel.getRow(i);
-                if (sequence.equals(tlog.getRecordProperties().get("sequenceNumber"))) {
+                TransactionLogRecord tlog = transactionTableModel.getRow(i);
+                if (tlog.getSequenceNumber() == sequenceNumber) {
                     selectTableRow(table, i);
                     return;
                 }
@@ -422,7 +407,7 @@ public class Console extends JFrame {
         int startIndex = table.getSelectedRow() + 1;
 
         for (int i = startIndex; i < transactionTableModel.getRowCount(); i++) {
-            JournalRecord tlog = transactionTableModel.getRow(i);
+            TransactionLogRecord tlog = transactionTableModel.getRow(i);
             if (tlog.getGtrid().toString().equals(gtrid)) {
                 selectTableRow(table, i);
                 return;
@@ -432,7 +417,7 @@ public class Console extends JFrame {
         // if it is not found, search starting back at the beginning of the list up to where we previously started
         if (startIndex > 0) {
             for (int i = 0; i < startIndex; i++) {
-                JournalRecord tlog = transactionTableModel.getRow(i);
+                TransactionLogRecord tlog = transactionTableModel.getRow(i);
                 if (tlog.getGtrid().toString().equals(gtrid)) {
                     selectTableRow(table, i);
                     return;

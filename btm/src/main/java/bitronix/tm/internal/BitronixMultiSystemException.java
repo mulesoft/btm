@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.internal;
 
@@ -25,30 +30,29 @@ import java.util.List;
 /**
  * Subclass of {@link javax.transaction.SystemException} supporting nested {@link Throwable}s.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class BitronixMultiSystemException extends BitronixSystemException {
 
-    private List<? extends Exception> exceptions = new ArrayList<Exception>();
-    private List<XAResourceHolderState> resourceStates = new ArrayList<XAResourceHolderState>();
+    private List exceptions = new ArrayList();
+    private List resourceStates = new ArrayList();
 
-    public BitronixMultiSystemException(String string, List<? extends Exception> exceptions, List<XAResourceHolderState> resourceStates) {
+    public BitronixMultiSystemException(String string, List exceptions, List resourceStates) {
         super(string);
         this.exceptions = exceptions;
         this.resourceStates = resourceStates;
     }
 
-    @Override
     public String getMessage() {
-        StringBuilder errorMessage = new StringBuilder();
+        StringBuffer errorMessage = new StringBuffer();
         errorMessage.append("collected ");
         errorMessage.append(exceptions.size());
         errorMessage.append(" exception(s):");
         for (int i = 0; i < exceptions.size(); i++) {
             errorMessage.append(System.getProperty("line.separator"));
-            Throwable throwable = exceptions.get(i);
+            Throwable throwable = (Throwable) exceptions.get(i);
             String message = throwable.getMessage();
-            XAResourceHolderState holderState = resourceStates.get(i);
+            XAResourceHolderState holderState = (XAResourceHolderState) resourceStates.get(i);
 
             if (holderState != null) {
                 errorMessage.append(" [");
@@ -73,7 +77,8 @@ public class BitronixMultiSystemException extends BitronixSystemException {
     }
 
     public boolean isUnilateralRollback() {
-        for (Throwable throwable : exceptions) {
+        for (int i = 0; i < exceptions.size(); i++) {
+            Throwable throwable = (Throwable) exceptions.get(i);
             if (!(throwable instanceof BitronixRollbackSystemException))
                 return false;
         }
@@ -84,7 +89,7 @@ public class BitronixMultiSystemException extends BitronixSystemException {
      * Get the list of exceptions that have been thrown during execution.
      * @return the list of exceptions that have been thrown during execution.
      */
-    public List<? extends Exception> getExceptions() {
+    public List getExceptions() {
         return exceptions;
     }
 
@@ -94,7 +99,7 @@ public class BitronixMultiSystemException extends BitronixSystemException {
      * Indices of both list always match a resource against the exception it threw.
      * @return the list of resource which threw an exception during execution.
      */
-    public List<XAResourceHolderState> getResourceStates() {
+    public List getResourceStates() {
         return resourceStates;
     }
 

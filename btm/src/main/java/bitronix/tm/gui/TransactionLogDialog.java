@@ -1,53 +1,60 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.gui;
 
-import bitronix.tm.journal.TransactionLogRecord;
 import bitronix.tm.utils.Decoder;
+import bitronix.tm.journal.TransactionLogRecord;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Set;
+import java.util.Iterator;
 
 /**
- * @author Ludovic Orban
+ * <p></p>
+ *
+ * @author lorban
  */
 public class TransactionLogDialog extends JDialog {
 
-    private final JPanel labelPanel = new JPanel();
-    private final JLabel statusLabel = new JLabel("Status");
-    private final JLabel recordLengthLabel = new JLabel("Record length");
-    private final JLabel headerLengthLabel = new JLabel("Header length");
-    private final JLabel timeLabel = new JLabel("Time");
-    private final JLabel sequenceNumberLabel = new JLabel("Sequence number");
-    private final JLabel crc32Label = new JLabel("CRC");
-    private final JLabel gtridLabel = new JLabel("GTRID");
-    private final JLabel uniqueNamesLabel = new JLabel("Resources");
+    private JPanel labelPanel = new JPanel();
+    private JLabel statusLabel = new JLabel("Status");
+    private JLabel recordLengthLabel = new JLabel("Record length");
+    private JLabel headerLengthLabel = new JLabel("Header length");
+    private JLabel timeLabel = new JLabel("Time");
+    private JLabel sequenceNumberLabel = new JLabel("Sequence number");
+    private JLabel crc32Label = new JLabel("CRC");
+    private JLabel gtridLabel = new JLabel("GTRID");
+    private JLabel uniqueNamesLabel = new JLabel("Resources");
 
-    private final JPanel fieldPanel = new JPanel();
-    private final JTextField statusField = new JTextField();
-    private final JTextField recordLengthField = new JTextField();
-    private final JTextField headerLengthField = new JTextField();
-    private final JTextField timeField = new JTextField();
-    private final JTextField sequenceNumberField = new JTextField();
-    private final JTextField crc32Field = new JTextField();
-    private final JTextField gtridField = new JTextField();
-    private final JTextField uniqueNamesField = new JTextField();
+    private JPanel fieldPanel = new JPanel();
+    private JTextField statusField = new JTextField();
+    private JTextField recordLengthField = new JTextField();
+    private JTextField headerLengthField = new JTextField();
+    private JTextField timeField = new JTextField();
+    private JTextField sequenceNumberField = new JTextField();
+    private JTextField crc32Field = new JTextField();
+    private JTextField gtridField = new JTextField();
+    private JTextField uniqueNamesField = new JTextField();
 
 
     public TransactionLogDialog(JFrame frame, TransactionLogRecord tlog) {
@@ -101,7 +108,7 @@ public class TransactionLogDialog extends JDialog {
     }
 
     private String buildString(Set uniqueNames) {
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
 
         Iterator it = uniqueNames.iterator();
         while (it.hasNext()) {

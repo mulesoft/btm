@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jms;
 
@@ -29,7 +34,7 @@ import javax.jms.XAConnection;
 /**
  * Disposable Connection handle.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class JmsConnectionHandle implements Connection {
 
@@ -52,12 +57,10 @@ public class JmsConnectionHandle implements Connection {
         return pooledConnection;
     }
 
-    @Override
     public Session createSession(boolean transacted, int acknowledgeMode) throws JMSException {
         return pooledConnection.createSession(transacted, acknowledgeMode);
     }
 
-    @Override
     public void close() throws JMSException {
         if (closed)
             return;
@@ -66,7 +69,6 @@ public class JmsConnectionHandle implements Connection {
         pooledConnection.release();
     }
 
-    @Override
     public String toString() {
         return "a JmsConnectionHandle of " + pooledConnection;
     }
@@ -74,47 +76,38 @@ public class JmsConnectionHandle implements Connection {
 
     /* Connection implementation */
 
-    @Override
     public String getClientID() throws JMSException {
         return getXAConnection().getClientID();
     }
 
-    @Override
     public void setClientID(String jndiName) throws JMSException {
         getXAConnection().setClientID(jndiName);
     }
 
-    @Override
     public ConnectionMetaData getMetaData() throws JMSException {
         return getXAConnection().getMetaData();
     }
 
-    @Override
     public ExceptionListener getExceptionListener() throws JMSException {
         return getXAConnection().getExceptionListener();
     }
 
-    @Override
     public void setExceptionListener(ExceptionListener listener) throws JMSException {
         getXAConnection().setExceptionListener(listener);
     }
 
-    @Override
     public void start() throws JMSException {
         getXAConnection().start();
     }
 
-    @Override
     public void stop() throws JMSException {
         getXAConnection().stop();
     }
 
-    @Override
     public ConnectionConsumer createConnectionConsumer(Destination destination, String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
         return getXAConnection().createConnectionConsumer(destination, messageSelector, sessionPool, maxMessages);
     }
 
-    @Override
     public ConnectionConsumer createDurableConnectionConsumer(Topic topic, String subscriptionName, String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException {
         return getXAConnection().createDurableConnectionConsumer(topic, subscriptionName, messageSelector, sessionPool, maxMessages);
     }

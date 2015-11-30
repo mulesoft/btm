@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.utils;
 
@@ -24,25 +29,23 @@ import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.DESKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 
 /**
  * <p>Simple crypto helper that uses symetric keys to crypt and decrypt resources passwords.</p>
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class CryptoEngine {
 
     private static final int LONG_SIZE_IN_BYTES = 8;
-    private static final String CRYPTO_PASSWORD = "B1tr0n!+";
-    private static final Charset US_ASCII = Charset.forName("US-ASCII");
+    private static final String CRYPTO_PASSWORD = "B1tr0n!+B1tr0n!+B1tr0n!+";
 
     /**
      * Crypt the given data using the given cipher.
@@ -61,15 +64,15 @@ public class CryptoEngine {
     public static String crypt(String cipher, String data) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, IOException {
         byte[] prependedBytes = Encoder.longToBytes(MonotonicClock.currentTimeMillis());
 
-        byte[] dataBytes = data.getBytes(US_ASCII);
+        byte[] dataBytes = data.getBytes("US-ASCII");
         byte[] toCrypt = new byte[LONG_SIZE_IN_BYTES + dataBytes.length];
         System.arraycopy(prependedBytes, 0, toCrypt, 0, LONG_SIZE_IN_BYTES);
         System.arraycopy(dataBytes, 0, toCrypt, LONG_SIZE_IN_BYTES, dataBytes.length);
 
 
-        DESKeySpec desKeySpec = new DESKeySpec(CRYPTO_PASSWORD.getBytes());
+        KeySpec keySpec = loadKeySpec(CRYPTO_PASSWORD.getBytes(), cipher);
         SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(cipher);
-        SecretKey secretKey = keyFactory.generateSecret(desKeySpec);
+        SecretKey secretKey = keyFactory.generateSecret(keySpec);
 
         Cipher desCipher = Cipher.getInstance(cipher);
         desCipher.init(Cipher.ENCRYPT_MODE, secretKey);
@@ -84,7 +87,16 @@ public class CryptoEngine {
         return Base64.encodeBytes(cypherBytes);
     }
 
-    /**
+    private static KeySpec loadKeySpec(byte[] bytes, String cipher) throws NoSuchAlgorithmException {
+        try {
+            Class<?> aClass = ClassLoaderUtils.loadClass("javax.crypto.spec." + cipher + "KeySpec");
+            return (KeySpec) aClass.getConstructor(byte[].class).newInstance(bytes);
+        } catch (Exception e) {
+            throw new NoSuchAlgorithmException("No such KeySpec: " + cipher, e);
+        }
+    }
+
+  /**
      * Decrypt using the given cipher the given base64-encoded, crypted data.
      * @param cipher the cypther to use.
      * @param data the base64-encoded data to decrypt.
@@ -98,9 +110,9 @@ public class CryptoEngine {
      * @throws IOException if an I/O error occurs.
      */
     public static String decrypt(String cipher, String data) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, IOException {
-        DESKeySpec desKeySpec = new DESKeySpec(CRYPTO_PASSWORD.getBytes());
+        KeySpec keySpec = loadKeySpec(CRYPTO_PASSWORD.getBytes(), cipher);
         SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(cipher);
-        SecretKey secretKey = keyFactory.generateSecret(desKeySpec);
+        SecretKey secretKey = keyFactory.generateSecret(keySpec);
 
         Cipher desCipher = Cipher.getInstance(cipher);
         desCipher.init(Cipher.DECRYPT_MODE, secretKey);
@@ -110,7 +122,7 @@ public class CryptoEngine {
         ByteArrayInputStream bis = new ByteArrayInputStream(cypherBytes);
         CipherInputStream cis = new CipherInputStream(bis, desCipher);
 
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
 
         while (true) {
             int b = cis.read();
@@ -118,8 +130,6 @@ public class CryptoEngine {
                 break;
             sb.append((char) b);
         }
-
-        cis.close();
 
         if (sb.length() < LONG_SIZE_IN_BYTES +1)
             throw new BitronixRuntimeException("invalid crypted password '" + data + "'");
@@ -173,7 +183,7 @@ public class CryptoEngine {
         private final static int MAX_LINE_LENGTH = 76;
         private final static byte EQUALS_SIGN = (byte) '=';
         private final static byte NEW_LINE = (byte) '\n';
-        private final static Charset UTF8 = Charset.forName("UTF-8"); // JDKs *must* support UTF-8
+        private final static String PREFERRED_ENCODING = "UTF-8";
         private final static byte WHITE_SPACE_ENC = -5; // Indicates white space in encoding
         private final static byte EQUALS_SIGN_ENC = -1; // Indicates equals sign in encoding
 
@@ -183,8 +193,9 @@ public class CryptoEngine {
          */
         //private final static byte[] ALPHABET;
         /* Host platform me be something funny like EBCDIC, so we hardcode these values. */
-        private final static byte[] _STANDARD_ALPHABET = {
-                (byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G',
+        private final static byte[] _STANDARD_ALPHABET =
+                {
+                        (byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G',
                         (byte) 'H', (byte) 'I', (byte) 'J', (byte) 'K', (byte) 'L', (byte) 'M', (byte) 'N',
                         (byte) 'O', (byte) 'P', (byte) 'Q', (byte) 'R', (byte) 'S', (byte) 'T', (byte) 'U',
                         (byte) 'V', (byte) 'W', (byte) 'X', (byte) 'Y', (byte) 'Z',
@@ -201,8 +212,9 @@ public class CryptoEngine {
          * Translates a Base64 value to either its 6-bit reconstruction value
          * or a negative number indicating some other meaning.
          */
-        private final static byte[] _STANDARD_DECODABET = {
-                -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
+        private final static byte[] _STANDARD_DECODABET =
+                {
+                        -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
                         -5, -5,                                      // Whitespace: Tab and Linefeed
                         -9, -9,                                      // Decimal 11 - 12
                         -5,                                         // Whitespace: Carriage Return
@@ -241,8 +253,9 @@ public class CryptoEngine {
          * <a href="http://www.faqs.org/rfcs/rfc3548.html">http://www.faqs.org/rfcs/rfc3548.html</a>.
          * Notice that the last two bytes become "hyphen" and "underscore" instead of "plus" and "slash."
          */
-        private final static byte[] _URL_SAFE_ALPHABET = {
-                (byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G',
+        private final static byte[] _URL_SAFE_ALPHABET =
+                {
+                        (byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G',
                         (byte) 'H', (byte) 'I', (byte) 'J', (byte) 'K', (byte) 'L', (byte) 'M', (byte) 'N',
                         (byte) 'O', (byte) 'P', (byte) 'Q', (byte) 'R', (byte) 'S', (byte) 'T', (byte) 'U',
                         (byte) 'V', (byte) 'W', (byte) 'X', (byte) 'Y', (byte) 'Z',
@@ -257,8 +270,9 @@ public class CryptoEngine {
         /**
          * Used in decoding URL- and Filename-safe dialects of Base64.
          */
-        private final static byte[] _URL_SAFE_DECODABET = {
-                -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
+        private final static byte[] _URL_SAFE_DECODABET =
+                {
+                        -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
                         -5, -5,                                      // Whitespace: Tab and Linefeed
                         -9, -9,                                      // Decimal 11 - 12
                         -5,                                         // Whitespace: Carriage Return
@@ -299,8 +313,9 @@ public class CryptoEngine {
          * I don't get the point of this technique, but it is described here:
          * <a href="http://www.faqs.org/qa/rfcc-1940.html">http://www.faqs.org/qa/rfcc-1940.html</a>.
          */
-        private final static byte[] _ORDERED_ALPHABET = {
-                (byte) '-',
+        private final static byte[] _ORDERED_ALPHABET =
+                {
+                        (byte) '-',
                         (byte) '0', (byte) '1', (byte) '2', (byte) '3', (byte) '4',
                         (byte) '5', (byte) '6', (byte) '7', (byte) '8', (byte) '9',
                         (byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G',
@@ -317,8 +332,9 @@ public class CryptoEngine {
         /**
          * Used in decoding the "ordered" dialect of Base64.
          */
-        private final static byte[] _ORDERED_DECODABET = {
-                -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
+        private final static byte[] _ORDERED_DECODABET =
+                {
+                        -9, -9, -9, -9, -9, -9, -9, -9, -9,                 // Decimal  0 -  8
                         -5, -5,                                      // Whitespace: Tab and Linefeed
                         -9, -9,                                      // Decimal 11 - 12
                         -5,                                         // Whitespace: Carriage Return
@@ -567,8 +583,13 @@ public class CryptoEngine {
                 }   // end finally
 
                 // Return value according to relevant encoding.
-                return new String(baos.toByteArray(), UTF8);
-           }   // end if: compress
+                try {
+                    return new String(baos.toByteArray(), PREFERRED_ENCODING);
+                }   // end try
+                catch (java.io.UnsupportedEncodingException uue) {
+                    return new String(baos.toByteArray());
+                }   // end catch
+            }   // end if: compress
 
             // Else, don't compress. Better not to use streams at all then.
             else {
@@ -600,7 +621,13 @@ public class CryptoEngine {
                 }   // end if: some padding needed
 
                 // Return value according to relevant encoding.
-                return new String(outBuff, 0, e, UTF8);
+                try {
+                    return new String(outBuff, 0, e, PREFERRED_ENCODING);
+                }   // end try
+                catch (java.io.UnsupportedEncodingException uue) {
+                    return new String(outBuff, 0, e);
+                }   // end catch
+
             }   // end else: don't compress
 
         }   // end encodeBytes
@@ -717,7 +744,8 @@ public class CryptoEngine {
                 sbiCrop = (byte) (source[i] & 0x7f); // Only the low seven bits
                 sbiDecode = DECODABET[sbiCrop];
 
-                if (sbiDecode >= WHITE_SPACE_ENC) { // White space, Equals sign or better
+                if (sbiDecode >= WHITE_SPACE_ENC) // White space, Equals sign or better
+                {
                     if (sbiDecode >= EQUALS_SIGN_ENC) {
                         b4[b4Posn++] = sbiCrop;
                         if (b4Posn > 3) {
@@ -767,7 +795,13 @@ public class CryptoEngine {
          * @since 1.4
          */
         public static byte[] decode(String s, int options) {
-            byte[] bytes = s.getBytes(UTF8);
+            byte[] bytes;
+            try {
+                bytes = s.getBytes(PREFERRED_ENCODING);
+            }   // end try
+            catch (java.io.UnsupportedEncodingException uee) {
+                bytes = s.getBytes();
+            }   // end catch
             //</change>
 
             // Decode
@@ -950,7 +984,6 @@ public class CryptoEngine {
              * @param theByte the byte to write
              * @since 1.3
              */
-            @Override
             public void write(int theByte) throws java.io.IOException {
                 // Encoding suspended?
                 if (suspendEncoding) {
@@ -961,7 +994,8 @@ public class CryptoEngine {
                 // Encode?
                 if (encode) {
                     buffer[position++] = (byte) theByte;
-                    if (position >= bufferLength) { // Enough to encode.
+                    if (position >= bufferLength)  // Enough to encode.
+                    {
                         out.write(encode3to4(b4, buffer, bufferLength, options));
 
                         lineLength += 4;
@@ -979,7 +1013,8 @@ public class CryptoEngine {
                     // Meaningful Base64 character?
                     if (decodabet[theByte & 0x7f] > WHITE_SPACE_ENC) {
                         buffer[position++] = (byte) theByte;
-                        if (position >= bufferLength) { // Enough to output.
+                        if (position >= bufferLength)  // Enough to output.
+                        {
                             int len = Base64.decode4to3(buffer, 0, b4, 0, options);
                             out.write(b4, 0, len);
                             //out.write( Base64.decode4to3( buffer ) );
@@ -1002,7 +1037,6 @@ public class CryptoEngine {
              * @param len      max number of bytes to read into array
              * @since 1.3
              */
-            @Override
             public void write(byte[] theBytes, int off, int len) throws java.io.IOException {
                 // Encoding suspended?
                 if (suspendEncoding) {
@@ -1041,8 +1075,7 @@ public class CryptoEngine {
              *
              * @since 1.3
              */
-             @Override
-             public void close() throws java.io.IOException {
+            public void close() throws java.io.IOException {
                 // 1. Ensure that pending characters are written
                 flushBase64();
 

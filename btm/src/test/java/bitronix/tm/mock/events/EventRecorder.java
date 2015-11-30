@@ -1,36 +1,37 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.mock.events;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class EventRecorder {
 
-    private static final Map<Object, EventRecorder> eventRecorders = new HashMap<Object, EventRecorder>();
+    private static Map eventRecorders = new HashMap();
 
     public synchronized static EventRecorder getEventRecorder(Object key) {
-        EventRecorder er = eventRecorders.get(key);
+        EventRecorder er = (EventRecorder) eventRecorders.get(key);
         if (er == null) {
             er = new EventRecorder();
             eventRecorders.put(key, er);
@@ -38,31 +39,31 @@ public class EventRecorder {
         return er;
     }
 
-    public static Map<Object, EventRecorder> getEventRecorders() {
+    public static Map getEventRecorders() {
         return eventRecorders;
     }
 
-    public static Iterator<? extends Event> iterateEvents() {
+    public static Iterator iterateEvents() {
         return new EventsIterator(eventRecorders);
     }
 
-    public static List<? extends Event> getOrderedEvents() {
-        Iterator<? extends Event> iterator = iterateEvents();
-        List<Event> orderedEvents = new ArrayList<Event>();
+    public static List getOrderedEvents() {
+        Iterator iterator = iterateEvents();
+        List orderedEvents = new ArrayList();
         while (iterator.hasNext()) {
-            Event ev = iterator.next();
-            orderedEvents.add(ev);
+            Object o = iterator.next();
+            orderedEvents.add(o);
         }
         return orderedEvents;
     }
 
     public static String dumpToString() {
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
 
         int i = 0;
-        Iterator<? extends Event> it = iterateEvents();
+        Iterator it = iterateEvents();
         while (it.hasNext()) {
-            Event event = it.next();
+            Event event = (Event) it.next();
             sb.append(i++);
             sb.append(" - ");
             sb.append(event.toString());
@@ -76,7 +77,7 @@ public class EventRecorder {
         eventRecorders.clear();
     }
 
-    private final List<Event> events = new ArrayList<Event>();
+    private List events = new ArrayList();
 
     private EventRecorder() {
     }
@@ -85,7 +86,7 @@ public class EventRecorder {
         events.add(evt);
     }
 
-    public List<Event> getEvents() {
+    public List getEvents() {
         return events;
     }
 

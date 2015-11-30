@@ -1,27 +1,32 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.internal;
 
-import bitronix.tm.BitronixXid;
 import bitronix.tm.resource.common.ResourceBean;
 import bitronix.tm.resource.common.XAResourceHolder;
+import bitronix.tm.BitronixXid;
 import bitronix.tm.utils.Decoder;
 import bitronix.tm.utils.MonotonicClock;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
@@ -39,7 +44,7 @@ import java.util.Date;
  * {@link javax.transaction.Transaction}.</p>
  *
  * @see bitronix.tm.resource.common.ResourceBean
- * @author Ludovic Orban
+ * @author lorban
  */
 public class XAResourceHolderState {
 
@@ -47,14 +52,13 @@ public class XAResourceHolderState {
 
     private final ResourceBean bean;
     private final XAResourceHolder xaResourceHolder;
-    private volatile BitronixXid xid;
-    private volatile boolean started;
-    private volatile boolean ended;
-    private volatile boolean suspended;
-    private volatile Date transactionTimeoutDate;
-    private volatile boolean isTimeoutAlreadySet;
-    private volatile boolean failed;
-    private volatile int hashCode;
+    private BitronixXid xid;
+    private boolean started;
+    private boolean ended;
+    private boolean suspended;
+    private Date transactionTimeoutDate;
+    private boolean isTimeoutAlreadySet;
+    private boolean failed;
 
     public XAResourceHolderState(XAResourceHolder resourceHolder, ResourceBean bean) {
         this.bean = bean;
@@ -65,7 +69,6 @@ public class XAResourceHolderState {
         suspended = false;
         isTimeoutAlreadySet = false;
         xid = null;
-        hashCode = 17 * bean.hashCode();
     }
 
     public XAResourceHolderState(XAResourceHolderState resourceHolderState) {
@@ -77,7 +80,6 @@ public class XAResourceHolderState {
         suspended = false;
         isTimeoutAlreadySet = false;
         xid = null;
-        hashCode = 17 * bean.hashCode();
     }
 
     public BitronixXid getXid() {
@@ -85,11 +87,10 @@ public class XAResourceHolderState {
     }
 
     public void setXid(BitronixXid xid) throws BitronixSystemException {
-        if (log.isDebugEnabled()) { log.debug("assigning <" + xid + "> to <" + this + ">"); }
+        if (log.isDebugEnabled()) log.debug("assigning <" + xid + "> to <" + this + ">");
         if (this.xid != null && !xid.equals(this.xid))
             throw new BitronixSystemException("a XID has already been assigned to " + this);
         this.xid = xid;
-        hashCode = 17 * (bean.hashCode() + (xid != null ? xid.hashCode() : 0));
     }
 
     public XAResource getXAResource() {
@@ -145,7 +146,7 @@ public class XAResourceHolderState {
         boolean suspended = this.suspended;
 
         if (this.ended && (flags == XAResource.TMSUSPEND)) {
-            if (log.isDebugEnabled()) { log.debug("resource already ended, changing state to suspended: " + this); }
+            if (log.isDebugEnabled()) log.debug("resource already ended, changing state to suspended: " + this);
             this.suspended = true;
             return;
         }
@@ -159,17 +160,17 @@ public class XAResourceHolderState {
             if (this.suspended)
                 throw new BitronixXAException("resource already suspended: " + this, XAException.XAER_PROTO);
 
-            if (log.isDebugEnabled()) { log.debug("suspending " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+            if (log.isDebugEnabled()) log.debug("suspending " + this + " with " + Decoder.decodeXAResourceFlag(flags));
             suspended = true;
         }
         else {
-            if (log.isDebugEnabled()) { log.debug("ending " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+            if (log.isDebugEnabled()) log.debug("ending " + this + " with " + Decoder.decodeXAResourceFlag(flags));
             ended = true;
         }
 
         try {
             getXAResource().end(xid, flags);
-            if (log.isDebugEnabled()) { log.debug("ended " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+            if (log.isDebugEnabled()) log.debug("ended " + this + " with " + Decoder.decodeXAResourceFlag(flags));
         } catch(XAException ex) {
             // could mean failed or unilaterally rolled back
             failed = true;
@@ -186,7 +187,7 @@ public class XAResourceHolderState {
         boolean started = this.started;
 
         if (this.ended && (flags == XAResource.TMRESUME)) {
-            if (log.isDebugEnabled()) { log.debug("resource already ended, changing state to resumed: " + this); }
+            if (log.isDebugEnabled()) log.debug("resource already ended, changing state to resumed: " + this);
             this.suspended = false;
             return;
         }
@@ -197,21 +198,21 @@ public class XAResourceHolderState {
             if (!this.started)
                 throw new BitronixXAException("resource hasn't been started, cannot resume it: " + this, XAException.XAER_PROTO);
 
-            if (log.isDebugEnabled()) { log.debug("resuming " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+            if (log.isDebugEnabled()) log.debug("resuming " + this + " with " + Decoder.decodeXAResourceFlag(flags));
             suspended = false;
         }
         else {
             if (this.started)
                 throw new BitronixXAException("resource already started: " + this, XAException.XAER_PROTO);
 
-            if (log.isDebugEnabled()) { log.debug("starting " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+            if (log.isDebugEnabled()) log.debug("starting " + this + " with " + Decoder.decodeXAResourceFlag(flags));
             started = true;
         }
 
         if (!isTimeoutAlreadySet && transactionTimeoutDate != null && bean.getApplyTransactionTimeout()) {
             int timeoutInSeconds = (int) ((transactionTimeoutDate.getTime() - MonotonicClock.currentTimeMillis() + 999L) / 1000L);
             timeoutInSeconds = Math.max(1, timeoutInSeconds); // setting a timeout of 0 means resetting -> set it to at least 1
-            if (log.isDebugEnabled()) { log.debug("applying resource timeout of " + timeoutInSeconds + "s on " + this); }
+            if (log.isDebugEnabled()) log.debug("applying resource timeout of " + timeoutInSeconds + "s on " + this);
             getXAResource().setTransactionTimeout(timeoutInSeconds);
             isTimeoutAlreadySet = true;
         }
@@ -220,17 +221,15 @@ public class XAResourceHolderState {
         this.suspended = suspended;
         this.started = started;
         this.ended = false;
-        if (log.isDebugEnabled()) { log.debug("started " + this + " with " + Decoder.decodeXAResourceFlag(flags)); }
+        if (log.isDebugEnabled()) log.debug("started " + this + " with " + Decoder.decodeXAResourceFlag(flags));
     }
 
-    @Override
     public int hashCode() {
-        return hashCode;
+        return 17 * (bean.hashCode() + xid.hashCode());
     }
 
-    @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof XAResourceHolderState) || this.hashCode != obj.hashCode())
+        if (!(obj instanceof XAResourceHolderState))
             return false;
 
         XAResourceHolderState other = (XAResourceHolderState) obj;
@@ -246,7 +245,6 @@ public class XAResourceHolderState {
         return obj1.equals(obj2);
     }
 
-    @Override
     public String toString() {
         return "an XAResourceHolderState with uniqueName=" + bean.getUniqueName() +
                 " XAResource=" + getXAResource() +
@@ -255,4 +253,5 @@ public class XAResourceHolderState {
                 (suspended ? " (suspended)":"") +
                 " with XID " + xid;
     }
+
 }

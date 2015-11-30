@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.internal;
 
@@ -26,19 +31,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.*;
 
 /**
  * Every {@link bitronix.tm.BitronixTransaction} contains an instance of this class that is used to register
  * and keep track of resources enlisted in a transaction.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class XAResourceManager {
 
@@ -58,7 +57,7 @@ public class XAResourceManager {
     /**
      * Enlist the specified {@link XAResourceHolderState}. A XID is generated and the resource is started with
      * XAResource.TMNOFLAGS or XAResource.TMJOIN if it could be joined with another previously enlisted one.
-     * <br>
+     * <br/>
      * There are 3 different cases that can happen when a {@link XAResourceHolderState} is enlisted:
      * <ul>
      * <li>already enlisted and not ended: do nothing</li>
@@ -81,7 +80,7 @@ public class XAResourceManager {
 
         XAResourceHolderState toBeJoinedHolderState = null;
         if (alreadyEnlistedHolder != null) {
-            if (log.isDebugEnabled()) { log.debug("resource already enlisted but has been ended eligible for join: " + alreadyEnlistedHolder); }
+            if (log.isDebugEnabled()) log.debug("resource already enlisted but has been ended eligible for join: " + alreadyEnlistedHolder);
             toBeJoinedHolderState = getManagedResourceWithSameRM(xaResourceHolderState);
         }
 
@@ -89,13 +88,13 @@ public class XAResourceManager {
         int flag;
 
         if (toBeJoinedHolderState != null) {
-            if (log.isDebugEnabled()) { log.debug("joining " + xaResourceHolderState + " with " + toBeJoinedHolderState); }
+            if (log.isDebugEnabled()) log.debug("joining " + xaResourceHolderState + " with " + toBeJoinedHolderState);
             xid = toBeJoinedHolderState.getXid();
             flag = XAResource.TMJOIN;
         }
         else {
             xid = UidGenerator.generateXid(gtrid);
-            if (log.isDebugEnabled()) { log.debug("creating new branch with " + xid); }
+            if (log.isDebugEnabled()) log.debug("creating new branch with " + xid);
             flag = XAResource.TMNOFLAGS;
         }
 
@@ -130,7 +129,7 @@ public class XAResourceManager {
      */
     public boolean delist(XAResourceHolderState xaResourceHolderState, int flag) throws XAException, BitronixSystemException {
         if (findXAResourceHolderState(xaResourceHolderState.getXAResource()) != null) {
-            if (log.isDebugEnabled()) { log.debug("delisting resource " + xaResourceHolderState); }
+            if (log.isDebugEnabled()) log.debug("delisting resource " + xaResourceHolderState);
             xaResourceHolderState.end(flag);
             return true;
         }
@@ -146,7 +145,7 @@ public class XAResourceManager {
     public void suspend() throws XAException {
         for (XAResourceHolderState xaResourceHolderState : resources) {
             if (!xaResourceHolderState.isEnded()) {
-                if (log.isDebugEnabled()) { log.debug("suspending " + xaResourceHolderState); }
+                if (log.isDebugEnabled()) log.debug("suspending " + xaResourceHolderState);
                 xaResourceHolderState.end(XAResource.TMSUCCESS);
             }
         } // while
@@ -163,7 +162,7 @@ public class XAResourceManager {
         List<XAResourceHolderState> toBeReEnlisted = new ArrayList<XAResourceHolderState>();
 
         for (XAResourceHolderState xaResourceHolderState : resources) {
-            if (log.isDebugEnabled()) { log.debug("resuming " + xaResourceHolderState); }
+            if (log.isDebugEnabled()) log.debug("resuming " + xaResourceHolderState);
 
             // If a prepared statement is (re-)used after suspend/resume is performed its XAResource needs to be
             // re-enlisted. This must be done outside this loop or that will confuse the iterator!
@@ -172,7 +171,7 @@ public class XAResourceManager {
 
         if (toBeReEnlisted.size() > 0 && log.isDebugEnabled()) log.debug("re-enlisting " + toBeReEnlisted.size() + " resource(s)");
         for (XAResourceHolderState xaResourceHolderState : toBeReEnlisted) {
-            if (log.isDebugEnabled()) { log.debug("re-enlisting resource " + xaResourceHolderState); }
+            if (log.isDebugEnabled()) log.debug("re-enlisting resource " + xaResourceHolderState);
             try {
                 enlist(xaResourceHolderState);
                 xaResourceHolderState.getXAResourceHolder().putXAResourceHolderState(xaResourceHolderState.getXid(), xaResourceHolderState);
@@ -194,7 +193,7 @@ public class XAResourceManager {
             if (xaResourceHolderState.getXAResource() == xaResource)
                 return xaResourceHolderState;
         }
-
+        
         return null;
     }
 
@@ -208,7 +207,7 @@ public class XAResourceManager {
      */
     private XAResourceHolderState getManagedResourceWithSameRM(XAResourceHolderState xaResourceHolderState) throws XAException {
         if (!xaResourceHolderState.getUseTmJoin()) {
-            if (log.isDebugEnabled()) { log.debug("join disabled on resource " + xaResourceHolderState); }
+            if (log.isDebugEnabled()) log.debug("join disabled on resource " + xaResourceHolderState);
             return null;
         }
 
@@ -218,13 +217,13 @@ public class XAResourceManager {
             if (alreadyEnlistedHolderState.isEnded() &&
                     !alreadyEnlistedHolderState.isSuspended() &&
                     xaResourceHolderState.getXAResource().isSameRM(alreadyEnlistedHolderState.getXAResource())) {
-                if (log.isDebugEnabled()) { log.debug("resources are joinable"); }
+                if (log.isDebugEnabled()) log.debug("resources are joinable");
                 return alreadyEnlistedHolderState;
             }
-            if (log.isDebugEnabled()) { log.debug("resources are not joinable"); }
+            if (log.isDebugEnabled()) log.debug("resources are not joinable");
         }
-
-        if (log.isDebugEnabled()) { log.debug("no joinable resource found for " + xaResourceHolderState); }
+        
+        if (log.isDebugEnabled()) log.debug("no joinable resource found for " + xaResourceHolderState);
         return null;
     }
 
@@ -233,7 +232,7 @@ public class XAResourceManager {
      * {@link bitronix.tm.resource.common.XAResourceHolder}s.
      */
     public void clearXAResourceHolderStates() {
-        if (log.isDebugEnabled()) { log.debug("clearing XAResourceHolder states on " + resources.size() + " resource(s)"); }
+        if (log.isDebugEnabled()) log.debug("clearing XAResourceHolder states on " + resources.size() + " resource(s)");
         Iterator<XAResourceHolderState> it = resources.iterator();
         while (it.hasNext()) {
             XAResourceHolderState xaResourceHolderState = it.next();
@@ -242,9 +241,9 @@ public class XAResourceManager {
             // clear out the current state
             resourceHolder.removeXAResourceHolderState(xaResourceHolderState.getXid());
 
-            boolean stillExists = resourceHolder.isExistXAResourceHolderStatesForGtrid(gtrid);
-            if (stillExists) log.warn("resource " + resourceHolder + " did not clean up " + resourceHolder.getXAResourceHolderStateCountForGtrid(gtrid) + "transaction states for GTRID [" + gtrid + "]");
-            else if (log.isDebugEnabled()) { log.debug("resource " + resourceHolder + " cleaned up all transaction states for GTRID [" + gtrid + "]"); }
+            Map statesForGtrid = resourceHolder.getXAResourceHolderStatesForGtrid(gtrid);
+            if (statesForGtrid != null) log.warn("resource " + resourceHolder + " did not clean up " + statesForGtrid.size() + "transaction states for GTRID [" + gtrid + "]");
+            else if (log.isDebugEnabled()) log.debug("resource " + resourceHolder + " cleaned up all transaction states for GTRID [" + gtrid + "]");
 
             it.remove();
         }
@@ -306,7 +305,6 @@ public class XAResourceManager {
      * Return a human-readable representation of this object.
      * @return a human-readable representation of this object.
      */
-    @Override
     public String toString() {
         return "a XAResourceManager with GTRID [" + gtrid + "] and " + resources;
     }

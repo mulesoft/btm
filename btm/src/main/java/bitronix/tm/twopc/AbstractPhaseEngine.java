@@ -1,42 +1,43 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.twopc;
 
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.internal.XAResourceHolderState;
 import bitronix.tm.internal.XAResourceManager;
-import bitronix.tm.twopc.executor.Executor;
+import bitronix.tm.internal.XAResourceHolderState;
 import bitronix.tm.twopc.executor.Job;
-import bitronix.tm.utils.CollectionUtils;
+import bitronix.tm.twopc.executor.Executor;
 import bitronix.tm.utils.Decoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import bitronix.tm.utils.CollectionUtils;
 
 import javax.transaction.xa.XAException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract phase execution engine.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public abstract class AbstractPhaseEngine {
 
@@ -63,11 +64,11 @@ public abstract class AbstractPhaseEngine {
         SortedSet<Integer> positions;
         if (reverse) {
             positions = resourceManager.getReverseOrderPositions();
-            if (log.isDebugEnabled()) { log.debug("executing phase on " + resourceManager.size() + " resource(s) enlisted in " + positions.size() + " position(s) in reverse position order"); }
+            if (log.isDebugEnabled()) log.debug("executing phase on " + resourceManager.size() + " resource(s) enlisted in " + positions.size() + " position(s) in reverse position order");
         }
         else {
             positions = resourceManager.getNaturalOrderPositions();
-            if (log.isDebugEnabled()) { log.debug("executing phase on " + resourceManager.size() + " resource(s) enlisted in " + positions.size() + " position(s) in natural position order"); }
+            if (log.isDebugEnabled()) log.debug("executing phase on " + resourceManager.size() + " resource(s) enlisted in " + positions.size() + " position(s) in natural position order");
         }
 
         List<JobsExecutionReport> positionErrorReports = new ArrayList<JobsExecutionReport>();
@@ -80,14 +81,14 @@ public abstract class AbstractPhaseEngine {
                 resources = resourceManager.getNaturalOrderResourcesForPosition(positionKey);
             }
 
-            if (log.isDebugEnabled()) { log.debug("running " + resources.size() + " job(s) for position '" + positionKey + "'"); }
+            if (log.isDebugEnabled()) log.debug("running " + resources.size() + " job(s) for position '" + positionKey + "'");
             JobsExecutionReport report = runJobsForPosition(resources);
             if (report.getExceptions().size() > 0) {
-                if (log.isDebugEnabled()) { log.debug(report.getExceptions().size() + " error(s) happened during execution of position '" + positionKey + "'"); }
+                if (log.isDebugEnabled()) log.debug(report.getExceptions().size() + " error(s) happened during execution of position '" + positionKey + "'");
                 positionErrorReports.add(report);
                 break;
             }
-            if (log.isDebugEnabled()) { log.debug("ran " + resources.size() + " job(s) for position '" + positionKey + "'"); }
+            if (log.isDebugEnabled()) log.debug("ran " + resources.size() + " job(s) for position '" + positionKey + "'");
         }
 
         if (positionErrorReports.size() > 0) {
@@ -112,7 +113,7 @@ public abstract class AbstractPhaseEngine {
         // start threads
         for (XAResourceHolderState resource : resources) {
             if (!isParticipating(resource)) {
-                if (log.isDebugEnabled()) { log.debug("skipping not participating resource " + resource); }
+                if (log.isDebugEnabled()) log.debug("skipping not participating resource " + resource);
                 continue;
             }
 
@@ -134,18 +135,18 @@ public abstract class AbstractPhaseEngine {
 
             if (xaException != null) {
                 String extraErrorDetails = TransactionManagerServices.getExceptionAnalyzer().extractExtraXAExceptionDetails(xaException);
-                if (log.isDebugEnabled()) { log.debug("error executing " + job + ", errorCode=" + Decoder.decodeXAExceptionErrorCode(xaException) +
-                        (extraErrorDetails == null ? "" : ", extra error=" + extraErrorDetails)); }
+                if (log.isDebugEnabled()) log.debug("error executing " + job + ", errorCode=" + Decoder.decodeXAExceptionErrorCode(xaException) +
+                        (extraErrorDetails == null ? "" : ", extra error=" + extraErrorDetails));
                 exceptions.add(xaException);
                 errorResources.add(job.getResource());
             } else if (runtimeException != null) {
-                if (log.isDebugEnabled()) { log.debug("error executing " + job); }
+                if (log.isDebugEnabled()) log.debug("error executing " + job);
                 exceptions.add(runtimeException);
                 errorResources.add(job.getResource());
             }
         }
 
-        if (log.isDebugEnabled()) { log.debug("phase executed with " + exceptions.size() + " exception(s)"); }
+        if (log.isDebugEnabled()) log.debug("phase executed with " + exceptions.size() + " exception(s)");
         return new JobsExecutionReport(exceptions, errorResources);
     }
 

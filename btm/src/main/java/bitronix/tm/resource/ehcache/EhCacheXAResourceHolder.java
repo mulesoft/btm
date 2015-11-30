@@ -1,25 +1,32 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.ehcache;
 
 import bitronix.tm.resource.common.AbstractXAResourceHolder;
 import bitronix.tm.resource.common.ResourceBean;
+import bitronix.tm.resource.common.XAResourceHolder;
 
 import javax.transaction.xa.XAResource;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -28,9 +35,9 @@ import java.util.List;
  * <p>
  *   Copyright 2003-2010 Terracotta, Inc.
  * </p>
- * @author Ludovic Orban
+ * @author lorban
  */
-public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAResourceHolder> {
+public class EhCacheXAResourceHolder extends AbstractXAResourceHolder {
 
     private final XAResource resource;
     private final ResourceBean bean;
@@ -48,7 +55,6 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public XAResource getXAResource() {
         return resource;
     }
@@ -56,7 +62,6 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public ResourceBean getResourceBean() {
         return bean;
     }
@@ -64,7 +69,6 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public void close() throws Exception {
         throw new UnsupportedOperationException("EhCacheXAResourceHolder cannot be used with an XAPool");
     }
@@ -72,7 +76,6 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public Object getConnectionHandle() throws Exception {
         throw new UnsupportedOperationException("EhCacheXAResourceHolder cannot be used with an XAPool");
     }
@@ -80,7 +83,6 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public Date getLastReleaseDate() {
         throw new UnsupportedOperationException("EhCacheXAResourceHolder cannot be used with an XAPool");
     }
@@ -88,15 +90,8 @@ public class EhCacheXAResourceHolder extends AbstractXAResourceHolder<EhCacheXAR
     /**
      * {@inheritDoc}
      */
-    @Override
-    public List<EhCacheXAResourceHolder> getXAResourceHolders() {
-        return Collections.singletonList(this);
+    public List<XAResourceHolder> getXAResourceHolders() {
+        return Arrays.asList((XAResourceHolder) this);
     }
 
-    public EhCacheXAResourceHolder getXAResourceHolderForXaResource(XAResource xaResource) {
-        if (xaResource == resource) {
-            return this;
-        }
-        return null;
-    }
 }

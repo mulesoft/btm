@@ -1,21 +1,25 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.common;
 
-import bitronix.tm.resource.common.XAStatefulHolder.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +28,7 @@ import javax.transaction.Synchronization;
 /**
  * {@link Synchronization} used to release a {@link XAStatefulHolder} object after 2PC has executed.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class DeferredReleaseSynchronization implements Synchronization {
 
@@ -40,21 +44,18 @@ public class DeferredReleaseSynchronization implements Synchronization {
         return xaStatefulHolder;
     }
 
-    @Override
     public void afterCompletion(int status) {
-        if (log.isDebugEnabled()) { log.debug("DeferredReleaseSynchronization requeuing " + xaStatefulHolder); }
+        if (log.isDebugEnabled()) log.debug("DeferredReleaseSynchronization requeuing " + xaStatefulHolder);
 
         // set this connection's state back to IN_POOL
-        xaStatefulHolder.setState(State.IN_POOL);
+        xaStatefulHolder.setState(XAResourceHolder.STATE_IN_POOL);
 
-        if (log.isDebugEnabled()) { log.debug("DeferredReleaseSynchronization requeued " + xaStatefulHolder); }
+        if (log.isDebugEnabled()) log.debug("DeferredReleaseSynchronization requeued " + xaStatefulHolder);
     }
 
-    @Override
     public void beforeCompletion() {
     }
 
-    @Override
     public String toString() {
         return "a DeferredReleaseSynchronization of " + xaStatefulHolder;
     }

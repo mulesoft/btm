@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.jms;
 
@@ -22,6 +27,9 @@ import bitronix.tm.resource.common.AbstractXAResourceHolder;
 import bitronix.tm.resource.common.ResourceBean;
 import bitronix.tm.resource.common.StateChangeListener;
 import bitronix.tm.resource.common.TransactionContextHelper;
+import bitronix.tm.resource.common.XAResourceHolder;
+import bitronix.tm.resource.common.XAStatefulHolder;
+import bitronix.tm.utils.Decoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,21 +58,20 @@ import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAResource;
 import java.io.Serializable;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * JMS Session wrapper that will send calls to either a XASession or to a non-XA Session depending on the calling
  * context.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
-public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrapper> implements Session, StateChangeListener<DualSessionWrapper> {
+public class DualSessionWrapper extends AbstractXAResourceHolder implements Session, StateChangeListener {
 
     private final static Logger log = LoggerFactory.getLogger(DualSessionWrapper.class);
 
@@ -87,8 +94,8 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         this.transacted = transacted;
         this.acknowledgeMode = acknowledgeMode;
 
-        if (log.isDebugEnabled()) { log.debug("getting session handle from " + pooledConnection); }
-        setState(State.ACCESSIBLE);
+        if (log.isDebugEnabled()) log.debug("getting session handle from " + pooledConnection);
+        setState(STATE_ACCESSIBLE);
         addStateChangeEventListener(this);
     }
 
@@ -101,20 +108,20 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
     }
 
     public Session getSession(boolean forceXa) throws JMSException {
-        if (getState() == State.CLOSED)
+        if (getState() == STATE_CLOSED)
             throw new IllegalStateException("session handle is closed");
 
         if (forceXa) {
-            if (log.isDebugEnabled()) { log.debug("choosing XA session (forced)"); }
+            if (log.isDebugEnabled()) log.debug("choosing XA session (forced)");
             return createXASession();
         }
         else {
             BitronixTransaction currentTransaction = TransactionContextHelper.currentTransaction();
             if (currentTransaction != null) {
-                if (log.isDebugEnabled()) { log.debug("choosing XA session"); }
+                if (log.isDebugEnabled()) log.debug("choosing XA session");
                 return createXASession();
             }
-            if (log.isDebugEnabled()) { log.debug("choosing non-XA session"); }
+            if (log.isDebugEnabled()) log.debug("choosing non-XA session");
             return createNonXASession();
         }
     }
@@ -125,7 +132,7 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
             session = pooledConnection.getXAConnection().createSession(transacted, acknowledgeMode);
             if (listener != null) {
                 session.setMessageListener(listener);
-                if (log.isDebugEnabled()) { log.debug("get non-XA session registered message listener: " + listener); }
+                if (log.isDebugEnabled()) log.debug("get non-XA session registered message listener: " + listener);
             }
         }
         return session;
@@ -137,29 +144,27 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
             xaSession = pooledConnection.getXAConnection().createXASession();
             if (listener != null) {
                 xaSession.setMessageListener(listener);
-                if (log.isDebugEnabled()) { log.debug("get XA session registered message listener: " + listener); }
+                if (log.isDebugEnabled()) log.debug("get XA session registered message listener: " + listener);
             }
             xaResource = xaSession.getXAResource();
         }
         return xaSession.getSession();
     }
 
-    @Override
     public String toString() {
-        return "a DualSessionWrapper in state " + getState() + " of " + pooledConnection;
+        return "a DualSessionWrapper in state " + Decoder.decodeXAStatefulHolderState(getState()) + " of " + pooledConnection;
     }
 
 
     /* wrapped Session methods that have special XA semantics */
 
-    @Override
     public void close() throws JMSException {
-        if (getState() != State.ACCESSIBLE) {
-            if (log.isDebugEnabled()) { log.debug("not closing already closed " + this); }
+        if (getState() != STATE_ACCESSIBLE) {
+            if (log.isDebugEnabled()) log.debug("not closing already closed " + this);
             return;
         }
 
-        if (log.isDebugEnabled()) { log.debug("closing " + this); }
+        if (log.isDebugEnabled()) log.debug("closing " + this);
 
         // delisting
         try {
@@ -186,7 +191,6 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
 
     }
 
-    @Override
     public Date getLastReleaseDate() {
         return null;
     }
@@ -196,13 +200,12 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
      * There is no such state for JMS sessions, this just means that it has been closed -> force a
      * state switch to CLOSED then clean up.
      */
-    @Override
-    public void stateChanged(DualSessionWrapper source, State oldState, State newState) {
-        if (newState == State.IN_POOL) {
-            setState(State.CLOSED);
+    public void stateChanged(XAStatefulHolder source, int oldState, int newState) {
+        if (newState == STATE_IN_POOL) {
+            setState(STATE_CLOSED);
         }
-        else if (newState == State.CLOSED) {
-            if (log.isDebugEnabled()) { log.debug("session state changing to CLOSED, cleaning it up: " + this); }
+        else if (newState == STATE_CLOSED) {
+            if (log.isDebugEnabled()) log.debug("session state changing to CLOSED, cleaning it up: " + this);
 
             if (xaSession != null) {
                 try {
@@ -223,9 +226,9 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
                 session = null;
             }
 
-            Iterator<Entry<MessageProducerConsumerKey, MessageProducer>> it = messageProducers.entrySet().iterator();
+            Iterator it = messageProducers.entrySet().iterator();
             while (it.hasNext()) {
-                Entry<MessageProducerConsumerKey, MessageProducer> entry = it.next();
+                Map.Entry entry = (Map.Entry) it.next();
                 MessageProducerWrapper messageProducerWrapper = (MessageProducerWrapper) entry.getValue();
                 try {
                     messageProducerWrapper.close();
@@ -235,9 +238,9 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
             }
             messageProducers.clear();
 
-            Iterator<Entry<MessageProducerConsumerKey, MessageConsumer>> it2 = messageConsumers.entrySet().iterator();
-            while (it2.hasNext()) {
-                Entry<MessageProducerConsumerKey, MessageConsumer> entry = it2.next();
+            it = messageConsumers.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry entry = (Map.Entry) it.next();
                 MessageConsumerWrapper messageConsumerWrapper = (MessageConsumerWrapper) entry.getValue();
                 try {
                     messageConsumerWrapper.close();
@@ -247,129 +250,120 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
             }
             messageConsumers.clear();
 
-        } // if newState == State.CLOSED
+        } // if newState == STATE_CLOSED
     }
 
-    @Override
-    public void stateChanging(DualSessionWrapper source, State currentState, State futureState) {
+    public void stateChanging(XAStatefulHolder source, int currentState, int futureState) {
     }
 
-    @Override
     public MessageProducer createProducer(Destination destination) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(destination);
-        if (log.isDebugEnabled()) { log.debug("looking for producer based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for producer based on " + key);
         MessageProducerWrapper messageProducer = (MessageProducerWrapper) messageProducers.get(key);
         if (messageProducer == null) {
-            if (log.isDebugEnabled()) { log.debug("found no producer based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no producer based on " + key + ", creating it");
             messageProducer = new MessageProducerWrapper(getSession().createProducer(destination), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching producer via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching producer via key " + key);
                 messageProducers.put(key, messageProducer);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found producer based on " + key + ", recycling it: " + messageProducer); }
+        else if (log.isDebugEnabled()) log.debug("found producer based on " + key + ", recycling it: " + messageProducer);
         return messageProducer;
     }
 
-    @Override
     public MessageConsumer createConsumer(Destination destination) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(destination);
-        if (log.isDebugEnabled()) { log.debug("looking for consumer based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for consumer based on " + key);
         MessageConsumerWrapper messageConsumer = (MessageConsumerWrapper) messageConsumers.get(key);
         if (messageConsumer == null) {
-            if (log.isDebugEnabled()) { log.debug("found no consumer based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no consumer based on " + key + ", creating it");
             messageConsumer = new MessageConsumerWrapper(getSession().createConsumer(destination), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching consumer via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching consumer via key " + key);
                 messageConsumers.put(key, messageConsumer);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer); }
+        else if (log.isDebugEnabled()) log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer);
         return messageConsumer;
     }
 
-    @Override
     public MessageConsumer createConsumer(Destination destination, String messageSelector) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(destination, messageSelector);
-        if (log.isDebugEnabled()) { log.debug("looking for consumer based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for consumer based on " + key);
         MessageConsumerWrapper messageConsumer = (MessageConsumerWrapper) messageConsumers.get(key);
         if (messageConsumer == null) {
-            if (log.isDebugEnabled()) { log.debug("found no consumer based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no consumer based on " + key + ", creating it");
             messageConsumer = new MessageConsumerWrapper(getSession().createConsumer(destination, messageSelector), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching consumer via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching consumer via key " + key);
                 messageConsumers.put(key, messageConsumer);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer); }
+        else if (log.isDebugEnabled()) log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer);
         return messageConsumer;
     }
 
-    @Override
     public MessageConsumer createConsumer(Destination destination, String messageSelector, boolean noLocal) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(destination, messageSelector, noLocal);
-        if (log.isDebugEnabled()) { log.debug("looking for consumer based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for consumer based on " + key);
         MessageConsumerWrapper messageConsumer = (MessageConsumerWrapper) messageConsumers.get(key);
         if (messageConsumer == null) {
-            if (log.isDebugEnabled()) { log.debug("found no consumer based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no consumer based on " + key + ", creating it");
             messageConsumer = new MessageConsumerWrapper(getSession().createConsumer(destination, messageSelector, noLocal), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching consumer via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching consumer via key " + key);
                 messageConsumers.put(key, messageConsumer);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer); }
+        else if (log.isDebugEnabled()) log.debug("found consumer based on " + key + ", recycling it: " + messageConsumer);
         return messageConsumer;
     }
 
-    @Override
     public TopicSubscriber createDurableSubscriber(Topic topic, String name) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(topic);
-        if (log.isDebugEnabled()) { log.debug("looking for durable subscriber based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for durable subscriber based on " + key);
         TopicSubscriberWrapper topicSubscriber = topicSubscribers.get(key);
         if (topicSubscriber == null) {
-            if (log.isDebugEnabled()) { log.debug("found no durable subscriber based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no durable subscriber based on " + key + ", creating it");
             topicSubscriber = new TopicSubscriberWrapper(getSession().createDurableSubscriber(topic, name), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching durable subscriber via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching durable subscriber via key " + key);
                 topicSubscribers.put(key, topicSubscriber);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found durable subscriber based on " + key + ", recycling it: " + topicSubscriber); }
+        else if (log.isDebugEnabled()) log.debug("found durable subscriber based on " + key + ", recycling it: " + topicSubscriber);
         return topicSubscriber;
     }
 
-    @Override
     public TopicSubscriber createDurableSubscriber(Topic topic, String name, String messageSelector, boolean noLocal) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(topic, messageSelector, noLocal);
-        if (log.isDebugEnabled()) { log.debug("looking for durable subscriber based on " + key); }
+        if (log.isDebugEnabled()) log.debug("looking for durable subscriber based on " + key);
         TopicSubscriberWrapper topicSubscriber = topicSubscribers.get(key);
         if (topicSubscriber == null) {
-            if (log.isDebugEnabled()) { log.debug("found no durable subscriber based on " + key + ", creating it"); }
+            if (log.isDebugEnabled()) log.debug("found no durable subscriber based on " + key + ", creating it");
             topicSubscriber = new TopicSubscriberWrapper(getSession().createDurableSubscriber(topic, name, messageSelector, noLocal), this, pooledConnection.getPoolingConnectionFactory());
 
             if (pooledConnection.getPoolingConnectionFactory().getCacheProducersConsumers()) {
-                if (log.isDebugEnabled()) { log.debug("caching durable subscriber via key " + key); }
+                if (log.isDebugEnabled()) log.debug("caching durable subscriber via key " + key);
                 topicSubscribers.put(key, topicSubscriber);
             }
         }
-        else if (log.isDebugEnabled()) { log.debug("found durable subscriber based on " + key + ", recycling it: " + topicSubscriber); }
+        else if (log.isDebugEnabled()) log.debug("found durable subscriber based on " + key + ", recycling it: " + topicSubscriber);
         return topicSubscriber;
     }
 
-    @Override
     public MessageListener getMessageListener() throws JMSException {
         return listener;
     }
 
-    @Override
     public void setMessageListener(MessageListener listener) throws JMSException {
-        if (getState() == State.CLOSED)
+        if (getState() == STATE_CLOSED)
             throw new IllegalStateException("session handle is closed");
 
         if (session != null)
@@ -380,11 +374,10 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         this.listener = listener;
     }
 
-    @Override
     public void run() {
         try {
             Session session = getSession(true);
-            if (log.isDebugEnabled()) { log.debug("running XA session " + session); }
+            if (log.isDebugEnabled()) log.debug("running XA session " + session);
             session.run();
         } catch (JMSException ex) {
             log.error("error getting session", ex);
@@ -393,38 +386,26 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
 
     /* XAResourceHolder implementation */
 
-    @Override
     public XAResource getXAResource() {
         return xaResource;
     }
 
-    @Override
     public ResourceBean getResourceBean() {
         return getPoolingConnectionFactory();
     }
 
     /* XAStatefulHolder implementation */
 
-    @Override
-    public List<DualSessionWrapper> getXAResourceHolders() {
-        return Collections.singletonList(this);
+    public List<XAResourceHolder> getXAResourceHolders() {
+        return Arrays.asList((XAResourceHolder) this);
     }
 
-    public DualSessionWrapper getXAResourceHolderForXaResource(XAResource xaResource) {
-        if (xaResource == this.xaResource) {
-            return this;
-        }
-        return null;
-    }
-
-    @Override
     public Object getConnectionHandle() throws Exception {
         return null;
     }
 
     /* XA-enhanced methods */
 
-    @Override
     public boolean getTransacted() throws JMSException {
         if (isParticipatingInActiveGlobalTransaction())
             return true; // for consistency with EJB 2.1 spec (17.3.5)
@@ -432,7 +413,6 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         return getSession().getTransacted();
     }
 
-    @Override
     public int getAcknowledgeMode() throws JMSException {
         if (isParticipatingInActiveGlobalTransaction())
             return 0; // for consistency with EJB 2.1 spec (17.3.5)
@@ -440,7 +420,6 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         return getSession().getAcknowledgeMode();
     }
 
-    @Override
     public void commit() throws JMSException {
         if (isParticipatingInActiveGlobalTransaction())
             throw new TransactionInProgressException("cannot commit a resource enlisted in a global transaction");
@@ -448,7 +427,6 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         getSession().commit();
     }
 
-    @Override
     public void rollback() throws JMSException {
         if (isParticipatingInActiveGlobalTransaction())
             throw new TransactionInProgressException("cannot rollback a resource enlisted in a global transaction");
@@ -456,7 +434,6 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         getSession().rollback();
     }
 
-    @Override
     public void recover() throws JMSException {
         if (isParticipatingInActiveGlobalTransaction())
             throw new TransactionInProgressException("cannot recover a resource enlisted in a global transaction");
@@ -464,13 +441,11 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
         getSession().recover();
     }
 
-    @Override
     public QueueBrowser createBrowser(javax.jms.Queue queue) throws JMSException {
         enlistResource();
         return getSession().createBrowser(queue);
     }
 
-    @Override
     public QueueBrowser createBrowser(javax.jms.Queue queue, String messageSelector) throws JMSException {
         enlistResource();
         return getSession().createBrowser(queue, messageSelector);
@@ -478,67 +453,54 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
 
     /* dumb wrapping of Session methods */
 
-    @Override
     public BytesMessage createBytesMessage() throws JMSException {
         return getSession().createBytesMessage();
     }
 
-    @Override
     public MapMessage createMapMessage() throws JMSException {
         return getSession().createMapMessage();
     }
 
-    @Override
     public Message createMessage() throws JMSException {
         return getSession().createMessage();
     }
 
-    @Override
     public ObjectMessage createObjectMessage() throws JMSException {
         return getSession().createObjectMessage();
     }
 
-    @Override
     public ObjectMessage createObjectMessage(Serializable serializable) throws JMSException {
         return getSession().createObjectMessage(serializable);
     }
 
-    @Override
     public StreamMessage createStreamMessage() throws JMSException {
         return getSession().createStreamMessage();
     }
 
-    @Override
     public TextMessage createTextMessage() throws JMSException {
         return getSession().createTextMessage();
     }
 
-    @Override
     public TextMessage createTextMessage(String text) throws JMSException {
         return getSession().createTextMessage(text);
     }
 
-    @Override
     public javax.jms.Queue createQueue(String queueName) throws JMSException {
         return getSession().createQueue(queueName);
     }
 
-    @Override
     public Topic createTopic(String topicName) throws JMSException {
         return getSession().createTopic(topicName);
     }
 
-    @Override
     public TemporaryQueue createTemporaryQueue() throws JMSException {
         return getSession().createTemporaryQueue();
     }
 
-    @Override
     public TemporaryTopic createTemporaryTopic() throws JMSException {
         return getSession().createTemporaryTopic();
     }
 
-    @Override
     public void unsubscribe(String name) throws JMSException {
         getSession().unsubscribe(name);
     }
@@ -547,7 +509,7 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
     /**
      * Enlist this session into the current transaction if automaticEnlistingEnabled = true for this resource.
      * If no transaction is running then this method does nothing.
-     * @throws JMSException if an exception occurs
+     * @throws JMSException
      */
     protected void enlistResource() throws JMSException {
         PoolingConnectionFactory poolingConnectionFactory = pooledConnection.getPoolingConnectionFactory();
@@ -562,4 +524,5 @@ public class DualSessionWrapper extends AbstractXAResourceHolder<DualSessionWrap
             }
         } // if getAutomaticEnlistingEnabled
     }
+
 }

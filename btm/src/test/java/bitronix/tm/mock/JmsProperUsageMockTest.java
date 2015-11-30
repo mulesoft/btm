@@ -1,81 +1,91 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.mock;
 
 import bitronix.tm.BitronixTransactionManager;
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.mock.events.EventRecorder;
-import bitronix.tm.mock.events.JournalLogEvent;
-import bitronix.tm.mock.events.XAResourceCommitEvent;
-import bitronix.tm.mock.events.XAResourceEndEvent;
-import bitronix.tm.mock.events.XAResourceStartEvent;
 import bitronix.tm.resource.jms.PoolingConnectionFactory;
+import bitronix.tm.mock.events.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.Connection;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.transaction.Status;
+import javax.transaction.*;
 import javax.transaction.xa.XAResource;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import javax.jms.Connection;
+import javax.jms.Session;
+import javax.jms.Queue;
+import javax.jms.MessageProducer;
 import java.util.List;
+import java.io.*;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class JmsProperUsageMockTest extends AbstractMockJmsTest {
 
     private final static Logger log = LoggerFactory.getLogger(JmsProperUsageMockTest.class);
 
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        TransactionManagerServices.getTransactionManager(); // start TM
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        TransactionManagerServices.getTransactionManager().shutdown(); // stop TM
+    }
+
     public void testSimpleWorkingCase() throws Exception {
-        if (log.isDebugEnabled()) { log.debug("*** getting TM"); }
+        if (log.isDebugEnabled()) log.debug("*** getting TM");
         BitronixTransactionManager tm = TransactionManagerServices.getTransactionManager();
-        if (log.isDebugEnabled()) { log.debug("*** before begin"); }
+        if (log.isDebugEnabled()) log.debug("*** before begin");
         tm.setTransactionTimeout(10);
         tm.begin();
-        if (log.isDebugEnabled()) { log.debug("*** after begin"); }
+        if (log.isDebugEnabled()) log.debug("*** after begin");
 
-        if (log.isDebugEnabled()) { log.debug("*** getting connection from CF1"); }
+        if (log.isDebugEnabled()) log.debug("*** getting connection from CF1");
         Connection connection1 = poolingConnectionFactory1.createConnection();
 
-        if (log.isDebugEnabled()) { log.debug("*** creating session 1 on connection 1"); }
+        if (log.isDebugEnabled()) log.debug("*** creating session 1 on connection 1");
         Session session1 = connection1.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-        if (log.isDebugEnabled()) { log.debug("*** creating queue 1 on session 1"); }
+        if (log.isDebugEnabled()) log.debug("*** creating queue 1 on session 1");
         Queue queue1 = session1.createQueue("queue");
 
-        if (log.isDebugEnabled()) { log.debug("*** creating producer1 on session 1"); }
+        if (log.isDebugEnabled()) log.debug("*** creating producer1 on session 1");
         MessageProducer producer1 = session1.createProducer(queue1);
 
-        if (log.isDebugEnabled()) { log.debug("*** sending message on producer1"); }
+        if (log.isDebugEnabled()) log.debug("*** sending message on producer1");
         producer1.send(session1.createTextMessage("testSimpleWorkingCase"));
 
 
-        if (log.isDebugEnabled()) { log.debug("*** closing connection 1"); }
+        if (log.isDebugEnabled()) log.debug("*** closing connection 1");
         connection1.close();
 
-        if (log.isDebugEnabled()) { log.debug("*** committing"); }
+        if (log.isDebugEnabled()) log.debug("*** committing");
         tm.commit();
-        if (log.isDebugEnabled()) { log.debug("*** TX is done"); }
+        if (log.isDebugEnabled()) log.debug("*** TX is done");
 
         // check flow
         List orderedEvents = EventRecorder.getOrderedEvents();

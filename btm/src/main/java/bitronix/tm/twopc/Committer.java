@@ -1,49 +1,48 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.twopc;
 
-import bitronix.tm.BitronixTransaction;
 import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.internal.BitronixHeuristicMixedException;
-import bitronix.tm.internal.BitronixHeuristicRollbackException;
-import bitronix.tm.internal.BitronixRollbackException;
-import bitronix.tm.internal.BitronixSystemException;
-import bitronix.tm.internal.BitronixXAException;
-import bitronix.tm.internal.XAResourceHolderState;
-import bitronix.tm.internal.XAResourceManager;
-import bitronix.tm.twopc.executor.Executor;
-import bitronix.tm.twopc.executor.Job;
-import bitronix.tm.utils.Decoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import bitronix.tm.BitronixTransaction;
+import bitronix.tm.utils.Decoder;
+import bitronix.tm.twopc.executor.Executor;
+import bitronix.tm.twopc.executor.Job;
+import bitronix.tm.internal.*;
 
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.HeuristicRollbackException;
 import javax.transaction.Status;
 import javax.transaction.xa.XAException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
 /**
  * Phase 2 Commit logic engine.
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public final class Committer extends AbstractPhaseEngine {
 
@@ -73,7 +72,7 @@ public final class Committer extends AbstractPhaseEngine {
         if (resourceManager.size() == 0) {
             transaction.setStatus(Status.STATUS_COMMITTING); //TODO: there is a disk force here that could be avoided
             transaction.setStatus(Status.STATUS_COMMITTED);
-            if (log.isDebugEnabled()) { log.debug("phase 2 commit succeeded with no interested resource"); }
+            if (log.isDebugEnabled()) log.debug("phase 2 commit succeeded with no interested resource");
             return;
         }
 
@@ -96,7 +95,7 @@ public final class Committer extends AbstractPhaseEngine {
             }
         }
 
-        if (log.isDebugEnabled()) { log.debug("phase 2 commit executed on resources " + Decoder.collectResourcesNames(committedResources)); }
+        if (log.isDebugEnabled()) log.debug("phase 2 commit executed on resources " + Decoder.collectResourcesNames(committedResources));
 
         // Some resources might have failed the 2nd phase of 2PC.
         // Only resources which successfully committed should be registered in the journal, the other
@@ -160,12 +159,10 @@ public final class Committer extends AbstractPhaseEngine {
                     (heuristicResources.size() > 0 ? " resource(s) " + Decoder.collectResourcesNames(heuristicResources) + " improperly unilaterally rolled back" + (hazard ? " (or hazard happened)" : "") : ""), phaseException);
     }
 
-    @Override
     protected Job createJob(XAResourceHolderState resourceHolder) {
         return new CommitJob(resourceHolder);
     }
 
-    @Override
     protected boolean isParticipating(XAResourceHolderState xaResourceHolderState) {
         for (XAResourceHolderState resourceHolderState : interestedResources) {
             if (xaResourceHolderState == resourceHolderState)
@@ -181,17 +178,14 @@ public final class Committer extends AbstractPhaseEngine {
             super(resourceHolder);
         }
 
-        @Override
         public XAException getXAException() {
             return xaException;
         }
 
-        @Override
         public RuntimeException getRuntimeException() {
             return runtimeException;
         }
 
-        @Override
         public void execute() {
             try {
                 commitResource(getResource(), onePhase);
@@ -204,10 +198,10 @@ public final class Committer extends AbstractPhaseEngine {
 
         private void commitResource(XAResourceHolderState resourceHolder, boolean onePhase) throws XAException {
             try {
-                if (log.isDebugEnabled()) { log.debug("committing resource " + resourceHolder + (onePhase ? " (with one-phase optimization)" : "")); }
+                if (log.isDebugEnabled()) log.debug("committing resource " + resourceHolder + (onePhase ? " (with one-phase optimization)" : ""));
                 resourceHolder.getXAResource().commit(resourceHolder.getXid(), onePhase);
                 committedResources.add(resourceHolder);
-                if (log.isDebugEnabled()) { log.debug("committed resource " + resourceHolder); }
+                if (log.isDebugEnabled()) log.debug("committed resource " + resourceHolder);
             } catch (XAException ex) {
                handleXAException(resourceHolder, ex, onePhase);
             }
@@ -238,7 +232,7 @@ public final class Committer extends AbstractPhaseEngine {
 
                 default:
                     if (onePhase) {
-                        if (log.isDebugEnabled()) { log.debug("XAException thrown in commit phase of 1PC optimization, rethrowing it"); }
+                        if (log.isDebugEnabled()) log.debug("XAException thrown in commit phase of 1PC optimization, rethrowing it");
                         throw xaException;
                     }
                     String extraErrorDetails = TransactionManagerServices.getExceptionAnalyzer().extractExtraXAExceptionDetails(xaException);
@@ -250,9 +244,9 @@ public final class Committer extends AbstractPhaseEngine {
 
         private void forgetHeuristicCommit(XAResourceHolderState resourceHolder) {
             try {
-                if (log.isDebugEnabled()) { log.debug("handling heuristic commit on resource " + resourceHolder.getXAResource()); }
+                if (log.isDebugEnabled()) log.debug("handling heuristic commit on resource " + resourceHolder.getXAResource());
                 resourceHolder.getXAResource().forget(resourceHolder.getXid());
-                if (log.isDebugEnabled()) { log.debug("forgotten heuristically committed resource " + resourceHolder.getXAResource()); }
+                if (log.isDebugEnabled()) log.debug("forgotten heuristically committed resource " + resourceHolder.getXAResource());
             } catch (XAException ex) {
                 String extraErrorDetails = TransactionManagerServices.getExceptionAnalyzer().extractExtraXAExceptionDetails(ex);
                 log.error("cannot forget " + resourceHolder.getXid() + " assigned to " + resourceHolder.getXAResource() +
@@ -260,7 +254,6 @@ public final class Committer extends AbstractPhaseEngine {
             }
         }
 
-        @Override
         public String toString() {
             return "a CommitJob " + (onePhase ? "(one phase) " : "") + "with " + getResource();
         }

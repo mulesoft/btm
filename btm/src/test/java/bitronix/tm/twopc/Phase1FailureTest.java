@@ -1,53 +1,49 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.twopc;
 
-import bitronix.tm.BitronixTransactionManager;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.journal.Journal;
-import bitronix.tm.mock.AbstractMockJdbcTest;
-import bitronix.tm.mock.events.Event;
-import bitronix.tm.mock.events.EventRecorder;
-import bitronix.tm.mock.events.JournalLogEvent;
-import bitronix.tm.mock.events.LocalRollbackEvent;
-import bitronix.tm.mock.events.XAResourcePrepareEvent;
-import bitronix.tm.mock.events.XAResourceRollbackEvent;
-import bitronix.tm.mock.resource.MockJournal;
-import bitronix.tm.mock.resource.MockXAResource;
-import bitronix.tm.mock.resource.jdbc.MockDriver;
-import bitronix.tm.mock.resource.jdbc.MockitoXADataSource;
-import bitronix.tm.resource.jdbc.PooledConnectionProxy;
-import bitronix.tm.resource.jdbc.PoolingDataSource;
-import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
-import junit.framework.TestCase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.sql.XAConnection;
-import javax.transaction.RollbackException;
-import javax.transaction.Status;
-import javax.transaction.xa.XAException;
-import java.lang.reflect.Field;
+import java.lang.reflect.*;
 import java.sql.Connection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.sql.XAConnection;
+import javax.transaction.*;
+import javax.transaction.xa.XAException;
+
+import bitronix.tm.journal.Journal;
+import junit.framework.TestCase;
+import bitronix.tm.*;
+import bitronix.tm.mock.AbstractMockJdbcTest;
+import bitronix.tm.mock.events.*;
+import bitronix.tm.mock.resource.*;
+import bitronix.tm.mock.resource.jdbc.*;
+import bitronix.tm.resource.jdbc.*;
+import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class Phase1FailureTest extends TestCase {
     private final static Logger log = LoggerFactory.getLogger(Phase1FailureTest.class);
@@ -83,12 +79,12 @@ public class Phase1FailureTest extends TestCase {
         tm.setTransactionTimeout(10); // TX must not timeout
 
         Connection connection1 = poolingDataSource1.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection1;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
         XAConnection xaConnection1 = (XAConnection) AbstractMockJdbcTest.getWrappedXAConnectionOf(handle.getPooledConnection());
         connection1.createStatement();
 
         Connection connection2 = poolingDataSource2.getConnection();
-        PooledConnectionProxy handle2 = (PooledConnectionProxy) connection2;
+        JdbcConnectionHandle handle2 = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
         XAConnection xaConnection2 = (XAConnection) AbstractMockJdbcTest.getWrappedXAConnectionOf(handle2.getPooledConnection());
         connection2.createStatement();
 
@@ -154,7 +150,7 @@ public class Phase1FailureTest extends TestCase {
         connection1.createStatement();
 
         Connection connection2 = poolingDataSource2.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection2;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection2);
         XAConnection xaConnection2 = (XAConnection) AbstractMockJdbcTest.getWrappedXAConnectionOf(handle.getPooledConnection());
         connection2.createStatement();
 
@@ -203,7 +199,7 @@ public class Phase1FailureTest extends TestCase {
         assertEquals("TM haven't properly tried to prepare", 3, prepareEventCount);
         assertEquals("TM haven't properly tried to rollback", 3, rollbackEventCount);
     }
-
+    
     /**
      * Test scenario:
      *
@@ -214,7 +210,7 @@ public class Phase1FailureTest extends TestCase {
      * XAResource 2 resolution: it's an LRCXaResource and prepare does not happen on this resource.
      *
      * Expected outcome:
-     *   TM fails on resource 1 prepare and throws RollbackException. Prepare must not happen on resource 2.
+     *   TM fails on resource 1 prepare and throws RollbackException. Prepare must not happen on resource 2. 
      *   On call to rollback, the two resource rollback should succeed.
      * Expected TM events:
      *  1 XAResourcePrepareEvent, 1 XAResourceRollbackEvent
@@ -227,16 +223,16 @@ public class Phase1FailureTest extends TestCase {
         tm.setTransactionTimeout(10); // TX must not timeout
 
         Connection connection1 = poolingDataSource1.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection1;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
         XAConnection xaConnection1 = (XAConnection) AbstractMockJdbcTest.getWrappedXAConnectionOf(handle.getPooledConnection());
         connection1.createStatement();
 
         Connection connection2 = poolingDataSourceLrc.getConnection();
         connection2.createStatement();
-
+        
         MockXAResource mockXAResource1 = (MockXAResource) xaConnection1.getXAResource();
         mockXAResource1.setPrepareException(createXAException("resource 1 prepare failed", XAException.XAER_RMERR));
-
+        
         try {
             tm.commit();
             fail("TM should have thrown an exception");
@@ -267,7 +263,7 @@ public class Phase1FailureTest extends TestCase {
 
             if (event instanceof XAResourcePrepareEvent)
                 prepareEventCount++;
-
+            
             if (event instanceof LocalRollbackEvent)
                 localRollbackEventCount++;
 
@@ -282,14 +278,12 @@ public class Phase1FailureTest extends TestCase {
         assertEquals("TM haven't properly tried to rollback", 1, localRollbackEventCount);
     }
 
-    @Override
     protected void setUp() throws Exception {
         EventRecorder.clear();
 
         // change disk journal into mock journal
         Field field = TransactionManagerServices.class.getDeclaredField("journalRef");
         field.setAccessible(true);
-        @SuppressWarnings("unchecked")
         AtomicReference<Journal> journalRef = (AtomicReference<Journal>) field.get(TransactionManagerServices.class);
         journalRef.set(new MockJournal());
 
@@ -316,7 +310,7 @@ public class Phase1FailureTest extends TestCase {
         poolingDataSource3.setMaxPoolSize(5);
         poolingDataSource3.setAutomaticEnlistingEnabled(true);
         poolingDataSource3.init();
-
+        
         poolingDataSourceLrc = new PoolingDataSource();
         poolingDataSourceLrc.setClassName(LrcXADataSource.class.getName());
         poolingDataSourceLrc.setUniqueName("pds4_lrc");
@@ -331,7 +325,6 @@ public class Phase1FailureTest extends TestCase {
         tm = TransactionManagerServices.getTransactionManager();
     }
 
-    @Override
     protected void tearDown() throws Exception {
         poolingDataSource1.close();
         poolingDataSource2.close();

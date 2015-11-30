@@ -1,35 +1,40 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource;
 
+import java.lang.reflect.Field;
+import java.util.*;
+
+import javax.sql.XADataSource;
+
+import junit.framework.TestCase;
 import bitronix.tm.mock.resource.jdbc.MockitoXADataSource;
 import bitronix.tm.mock.resource.jms.MockXAConnectionFactory;
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 import bitronix.tm.resource.jms.PoolingConnectionFactory;
 import bitronix.tm.utils.PropertyUtils;
-import junit.framework.TestCase;
-
-import javax.sql.XADataSource;
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class ResourceLoaderTest extends TestCase {
 
@@ -46,8 +51,6 @@ public class ResourceLoaderTest extends TestCase {
         p.setProperty("resource.ds1.driverProperties.userName", "java");
         p.setProperty("resource.ds1.driverProperties.password", "java");
         p.setProperty("resource.ds1.driverProperties.database", "users1");
-        p.setProperty("resource.ds1.driverProperties.clonedProperties.a.key", "1000");
-        p.setProperty("resource.ds1.driverProperties.clonedProperties.b.key", "2000");
 
 
         loader.initXAResourceProducers(p);
@@ -60,16 +63,8 @@ public class ResourceLoaderTest extends TestCase {
         assertEquals("bitronix.tm.mock.resource.jdbc.MockitoXADataSource", pds.getClassName());
         assertEquals("dataSource1", pds.getUniqueName());
         assertEquals(123, pds.getMaxPoolSize());
-        assertEquals(5, pds.getDriverProperties().size());
+        assertEquals(3, pds.getDriverProperties().size());
 
-        MockitoXADataSource mockXA = pds.unwrap(MockitoXADataSource.class);
-        assertNotNull(mockXA);
-
-        Properties clonedProperties = mockXA.getClonedProperties();
-        assertNotNull(clonedProperties);
-        assertEquals(2, clonedProperties.size());
-        assertEquals("1000", clonedProperties.getProperty("a.key"));
-        assertEquals("2000", clonedProperties.getProperty("b.key"));
     }
 
 

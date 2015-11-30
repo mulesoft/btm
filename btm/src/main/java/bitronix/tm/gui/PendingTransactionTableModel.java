@@ -1,25 +1,29 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.gui;
 
-import bitronix.tm.journal.TransactionLogRecord;
 import bitronix.tm.utils.Decoder;
-import bitronix.tm.utils.Uid;
-import org.slf4j.Logger;
+import bitronix.tm.journal.TransactionLogRecord;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import javax.swing.event.TableModelListener;
 import javax.transaction.Status;
@@ -29,7 +33,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author Ludovic Orban
+ * <p></p>
+ *
+ * @author lorban
  */
 public class PendingTransactionTableModel extends TransactionTableModel {
 
@@ -43,44 +49,39 @@ public class PendingTransactionTableModel extends TransactionTableModel {
         }
     }
 
-    @Override
     public int getColumnCount() {
         return 8;
     }
 
-    @Override
     public int getRowCount() {
         return tLogs.size();
     }
 
-    @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
         return false;
     }
 
-    @Override
     public Class getColumnClass(int columnIndex) {
         return String.class;
     }
 
-    @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        TransactionLogRecord tlog = tLogs.get(rowIndex);
+        TransactionLogRecord tlog = (TransactionLogRecord) tLogs.get(rowIndex);
         switch (columnIndex) {
             case 0:
                 return Decoder.decodeStatus(tlog.getStatus());
             case 1:
-                return Integer.toString(tlog.getRecordLength());
+                return "" + tlog.getRecordLength();
             case 2:
-                return Integer.toString(tlog.getHeaderLength());
+                return "" + tlog.getHeaderLength();
             case 3:
-                return Long.toString(tlog.getTime());
+                return "" + tlog.getTime();
             case 4:
-                return Integer.toString(tlog.getSequenceNumber());
+                return "" + tlog.getSequenceNumber();
             case 5:
-                return Integer.toString(tlog.getCrc32());
+                return "" + tlog.getCrc32();
             case 6:
-                return Integer.toString(tlog.getUniqueNames().size());
+                return "" + tlog.getUniqueNames().size();
             case 7:
                 return tlog.getGtrid().toString();
             default:
@@ -88,11 +89,9 @@ public class PendingTransactionTableModel extends TransactionTableModel {
         }
     }
 
-    @Override
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
     }
 
-    @Override
     public String getColumnName(int columnIndex) {
         switch (columnIndex) {
             case 0:
@@ -116,37 +115,32 @@ public class PendingTransactionTableModel extends TransactionTableModel {
         }
     }
 
-    @Override
     public void addTableModelListener(TableModelListener l) {
     }
 
-    @Override
     public void removeTableModelListener(TableModelListener l) {
     }
 
 
-    private Map<Uid, TransactionLogRecord> pendingTLogs = new HashMap<Uid, TransactionLogRecord>();
+    private Map pendingTLogs = new HashMap();
 
-    @Override
     protected void readFullTransactionLog(File filename) throws IOException {
         super.readFullTransactionLog(filename);
         pendingTLogs.clear();
     }
 
-    @Override
     public boolean acceptLog(TransactionLogRecord tlog) {
         if (tlog.getStatus() == Status.STATUS_COMMITTING) {
             pendingTLogs.put(tlog.getGtrid(), tlog);
             return true;
         }
-        if (tlog.getStatus() == Status.STATUS_COMMITTED  ||  tlog.getStatus() == Status.STATUS_ROLLEDBACK  &&  pendingTLogs.containsKey(tlog.getGtrid())) {
+        if (tlog.getStatus() == Status.STATUS_COMMITTED  ||  tlog.getStatus() == Status.STATUS_ROLLEDBACK  &&  pendingTLogs.containsKey(tlog.getGtrid().toString())) {
             tLogs.remove(pendingTLogs.get(tlog.getGtrid()));
         }
         return false;
     }
 
-    @Override
     public TransactionLogRecord getRow(int row) {
-        return tLogs.get(row);
+        return (TransactionLogRecord) tLogs.get(row);
     }
 }

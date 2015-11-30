@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.common;
 
@@ -28,7 +33,7 @@ import java.util.Map;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class AbstractXAResourceHolderTest extends TestCase {
 
@@ -36,32 +41,26 @@ public class AbstractXAResourceHolderTest extends TestCase {
         final ResourceBean resourceBean = new ResourceBean() {
         };
 
-        AbstractXAResourceHolder<DummyResourceHolder> xaResourceHolder = new AbstractXAResourceHolder<DummyResourceHolder>() {
-            @Override
+        AbstractXAResourceHolder xaResourceHolder = new AbstractXAResourceHolder() {
             public XAResource getXAResource() {
                 return null;
             }
 
-            @Override
             public ResourceBean getResourceBean() {
                 return resourceBean;
             }
 
-            @Override
-            public List<? extends XAResourceHolder<? extends XAResourceHolder>> getXAResourceHolders() {
-                throw new UnsupportedOperationException("Not supported yet.");
+            public List getXAResourceHolders() {
+                return null;
             }
 
-            @Override
             public Object getConnectionHandle() throws Exception {
                 return null;
             }
 
-            @Override
             public void close() throws Exception {
             }
 
-            @Override
             public Date getLastReleaseDate() {
                 return null;
             }

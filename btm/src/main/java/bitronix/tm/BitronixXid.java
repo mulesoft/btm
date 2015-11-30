@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm;
 
@@ -30,7 +35,7 @@ import javax.transaction.xa.Xid;
  * {@link bitronix.tm.internal.XAResourceManager}. Both GTRID and XIDs are generated
  * by the {@link bitronix.tm.utils.UidGenerator}.</p>
  *
- * @author Ludovic Orban
+ * @author lorban
  * @see bitronix.tm.utils.UidGenerator
  * @see bitronix.tm.BitronixTransaction
  * @see bitronix.tm.internal.XAResourceManager
@@ -71,7 +76,6 @@ public class BitronixXid implements Xid {
      * Get Bitronix XID format ID. Defined by {@link BitronixXid#FORMAT_ID}.
      * @return the Bitronix XID format ID.
      */
-    @Override
     public int getFormatId() {
         return FORMAT_ID;
     }
@@ -80,7 +84,6 @@ public class BitronixXid implements Xid {
      * Get the BQUAL of the XID.
      * @return the XID branch qualifier.
      */
-    @Override
     public byte[] getBranchQualifier() {
         return branchQualifier.getArray();
     }
@@ -93,7 +96,6 @@ public class BitronixXid implements Xid {
      * Get the GTRID of the XID.
      * @return the XID global transaction ID.
      */
-    @Override
     public byte[] getGlobalTransactionId() {
         return globalTransactionId.getArray();
     }
@@ -106,7 +108,6 @@ public class BitronixXid implements Xid {
      * Get a human-readable string representation of the XID.
      * @return a human-readable string representation.
      */
-    @Override
     public String toString() {
         return toStringValue;
     }
@@ -126,7 +127,6 @@ public class BitronixXid implements Xid {
      * @param obj the XID to compare to.
      * @return true if both XIDs have the same format ID and contain exactly the same GTRID and BQUAL.
      */
-    @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof BitronixXid))
             return false;
@@ -141,7 +141,6 @@ public class BitronixXid implements Xid {
      * Get an integer hash for the XID.
      * @return a constant hash value.
      */
-    @Override
     public int hashCode() {
         return hashCodeValue;
     }

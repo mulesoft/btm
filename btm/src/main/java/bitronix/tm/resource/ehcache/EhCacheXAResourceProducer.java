@@ -1,17 +1,22 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.resource.ehcache;
 
@@ -22,7 +27,9 @@ import bitronix.tm.resource.ResourceObjectFactory;
 import bitronix.tm.resource.ResourceRegistrar;
 import bitronix.tm.resource.common.RecoveryXAResourceHolder;
 import bitronix.tm.resource.common.ResourceBean;
+import bitronix.tm.resource.common.XAResourceHolder;
 import bitronix.tm.resource.common.XAResourceProducer;
+import bitronix.tm.resource.common.XAStatefulHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +47,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  *   Copyright 2003-2010 Terracotta, Inc.
  * </p>
- * @author Ludovic Orban
+ * @author lorban
  */
-@SuppressWarnings("serial")
-public final class EhCacheXAResourceProducer extends ResourceBean implements XAResourceProducer<EhCacheXAResourceHolder, EhCacheXAResourceHolder> {
+public final class EhCacheXAResourceProducer extends ResourceBean implements XAResourceProducer {
 
     private static final Logger log = LoggerFactory.getLogger(EhCacheXAResourceProducer.class.getName());
 
@@ -129,7 +135,6 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public XAResourceHolderState startRecovery() throws RecoveryException {
         if (recoveryXAResourceHolder != null) {
             throw new RecoveryException("recovery already in progress on " + this);
@@ -146,7 +151,6 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public void endRecovery() throws RecoveryException {
         recoveryXAResourceHolder = null;
     }
@@ -154,7 +158,6 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public void setFailed(boolean failed) {
         // cache cannot fail as it's not connection oriented
     }
@@ -162,8 +165,7 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
-    public EhCacheXAResourceHolder findXAResourceHolder(XAResource xaResource) {
+    public XAResourceHolder findXAResourceHolder(XAResource xaResource) {
         for (EhCacheXAResourceHolder xaResourceHolder : xaResourceHolders.values()) {
             if (xaResource == xaResourceHolder.getXAResource()) {
                 return xaResourceHolder;
@@ -176,7 +178,6 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public void init() {
         try {
             ResourceRegistrar.register(this);
@@ -188,7 +189,6 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
     public void close() {
         xaResourceHolders.clear();
         xaResourceHolderCounter.set(0);
@@ -198,22 +198,19 @@ public final class EhCacheXAResourceProducer extends ResourceBean implements XAR
     /**
      * {@inheritDoc}
      */
-    @Override
-    public EhCacheXAResourceHolder createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
+    public XAStatefulHolder createPooledConnection(Object xaFactory, ResourceBean bean) throws Exception {
         throw new UnsupportedOperationException("Ehcache is not connection-oriented");
     }
 
     /**
      * {@inheritDoc}
      */
-    @Override
     public Reference getReference() throws NamingException {
         return new Reference(EhCacheXAResourceProducer.class.getName(),
                 new StringRefAddr("uniqueName", getUniqueName()),
                 ResourceObjectFactory.class.getName(), null);
     }
 
-    @Override
     public String toString() {
         return "a EhCacheXAResourceProducer with uniqueName " + getUniqueName();
     }

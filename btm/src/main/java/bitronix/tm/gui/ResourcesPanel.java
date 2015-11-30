@@ -1,24 +1,29 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.gui;
 
 import bitronix.tm.TransactionManagerServices;
+import bitronix.tm.utils.PropertyUtils;
 import bitronix.tm.resource.ResourceLoader;
 import bitronix.tm.resource.common.ResourceBean;
-import bitronix.tm.utils.PropertyUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -29,14 +34,14 @@ import java.util.Map;
 
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class ResourcesPanel extends JPanel {
 
-    private final JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+    private JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
-    private final JTree resourcesTree = new JTree();
-    private final JScrollPane resourcesTreeScrollpane = new JScrollPane(resourcesTree);
+    private JTree resourcesTree = new JTree();
+    private JScrollPane resourcesTreeScrollpane = new JScrollPane(resourcesTree);
 
     private JTextArea activeResource = new JTextArea();
 
@@ -45,7 +50,6 @@ public class ResourcesPanel extends JPanel {
         resourcesTree.setModel(new ResourcesTreeModel());
 
         resourcesTree.addMouseListener(new MouseAdapter() {
-            @Override
             public void mouseClicked(MouseEvent evt) {
                 JTree tree = (JTree) evt.getSource();
                 int selectedRow = tree.getSelectionRows()[0] -1;
@@ -62,7 +66,7 @@ public class ResourcesPanel extends JPanel {
                 if (resource != null) {
                     try {
                         Map properties = PropertyUtils.getProperties(resource);
-                        StringBuilder sb = new StringBuilder();
+                        StringBuffer sb = new StringBuffer();
                         Iterator it2 = properties.entrySet().iterator();
                         while (it2.hasNext()) {
                             Map.Entry entry = (Map.Entry) it2.next();

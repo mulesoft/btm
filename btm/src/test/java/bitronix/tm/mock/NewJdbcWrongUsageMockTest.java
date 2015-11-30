@@ -1,56 +1,48 @@
 /*
- * Copyright (C) 2006-2013 Bitronix Software (http://www.bitronix.be)
+ * Bitronix Transaction Manager
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (c) 2010, Bitronix Software.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * This copyrighted material is made available to anyone wishing to use, modify,
+ * copy, or redistribute it subject to the terms and conditions of the GNU
+ * Lesser General Public License, as published by the Free Software Foundation.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this distribution; if not, write to:
+ * Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301 USA
  */
 package bitronix.tm.mock;
 
-import bitronix.tm.BitronixTransactionManager;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.mock.events.ConnectionDequeuedEvent;
-import bitronix.tm.mock.events.ConnectionQueuedEvent;
-import bitronix.tm.mock.events.EventRecorder;
-import bitronix.tm.mock.events.JournalLogEvent;
-import bitronix.tm.mock.events.XAResourceEndEvent;
-import bitronix.tm.mock.events.XAResourcePrepareEvent;
-import bitronix.tm.mock.events.XAResourceRollbackEvent;
-import bitronix.tm.mock.events.XAResourceStartEvent;
+import java.lang.reflect.Proxy;
+import java.sql.*;
+import java.util.List;
+
+import javax.sql.XAConnection;
+import javax.transaction.*;
+import javax.transaction.xa.*;
+
+import bitronix.tm.*;
+import bitronix.tm.mock.events.*;
 import bitronix.tm.mock.resource.MockXAResource;
-import bitronix.tm.mock.resource.jdbc.MockDriver;
+import bitronix.tm.mock.resource.jdbc.*;
 import bitronix.tm.mock.resource.jms.MockConnectionFactory;
-import bitronix.tm.resource.jdbc.JdbcPooledConnection;
-import bitronix.tm.resource.jdbc.PooledConnectionProxy;
-import bitronix.tm.resource.jdbc.PoolingDataSource;
+import bitronix.tm.resource.jdbc.*;
 import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
 import bitronix.tm.resource.jms.PoolingConnectionFactory;
 import bitronix.tm.resource.jms.lrc.LrcXAConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.XAConnection;
-import javax.transaction.InvalidTransactionException;
-import javax.transaction.RollbackException;
-import javax.transaction.Status;
-import javax.transaction.Transaction;
-import javax.transaction.xa.XAException;
-import javax.transaction.xa.XAResource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.List;
-
 /**
  *
- * @author Ludovic Orban
+ * @author lorban
  */
 public class NewJdbcWrongUsageMockTest extends AbstractMockJdbcTest {
 
@@ -61,7 +53,7 @@ public class NewJdbcWrongUsageMockTest extends AbstractMockJdbcTest {
         tm.begin();
 
         Connection connection1 = poolingDataSource1.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection1;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
         JdbcPooledConnection pc1 = handle.getPooledConnection();
 
         XAConnection xaConnection1 = (XAConnection) getWrappedXAConnectionOf(pc1);
@@ -121,7 +113,7 @@ public class NewJdbcWrongUsageMockTest extends AbstractMockJdbcTest {
         tm.begin();
 
         Connection connection1 = poolingDataSource1.getConnection();
-        PooledConnectionProxy handle = (PooledConnectionProxy) connection1;
+        JdbcConnectionHandle handle = (JdbcConnectionHandle) Proxy.getInvocationHandler(connection1);
         JdbcPooledConnection pc1 = handle.getPooledConnection();
             XAConnection xaConnection1 = (XAConnection) getWrappedXAConnectionOf(pc1);
             MockXAResource mockXAResource = (MockXAResource) xaConnection1.getXAResource();
@@ -259,7 +251,7 @@ public class NewJdbcWrongUsageMockTest extends AbstractMockJdbcTest {
              c2.createStatement();
              fail("expected SQLException");
          } catch (SQLException ex) {
-        	 assertTrue(ex.getMessage().startsWith("error enlisting a ConnectionJavaProxy of a JdbcPooledConnection from datasource pds2_lrc in state ACCESSIBLE with usage count 1 wrapping a JDBC LrcXAConnection on a JDBC LrcConnectionJavaProxy on Mock"));
+        	 assertTrue(ex.getMessage().startsWith("error enlisting a JdbcConnectionHandle of a JdbcPooledConnection from datasource pds2_lrc in state ACCESSIBLE with usage count 1 wrapping a JDBC LrcXAConnection on Mock for Connection"));
              assertTrue(ex.getCause().getMessage().matches("cannot enlist more than one non-XA resource, tried enlisting an XAResourceHolderState with uniqueName=pds2_lrc XAResource=a JDBC LrcXAResource in state NO_TX with XID null, already enlisted: an XAResourceHolderState with uniqueName=pds1_lrc XAResource=a JDBC LrcXAResource in state STARTED \\(started\\) with XID a Bitronix XID .*"));
          }
          c2.close();
@@ -303,7 +295,7 @@ public class NewJdbcWrongUsageMockTest extends AbstractMockJdbcTest {
              c2.createStatement();
              fail("expected SQLException");
          } catch (SQLException ex) {
-        	 assertTrue(ex.getMessage().startsWith("error enlisting a ConnectionJavaProxy of a JdbcPooledConnection from datasource pds2_lrc in state ACCESSIBLE with usage count 1 wrapping a JDBC LrcXAConnection on a JDBC LrcConnectionJavaProxy on Mock"));
+        	 assertTrue(ex.getMessage().startsWith("error enlisting a JdbcConnectionHandle of a JdbcPooledConnection from datasource pds2_lrc in state ACCESSIBLE with usage count 1 wrapping a JDBC LrcXAConnection on Mock for Connection"));
              assertTrue(ex.getCause().getMessage().startsWith("cannot enlist more than one non-XA resource, tried enlisting an XAResourceHolderState with uniqueName=pds2_lrc XAResource=a JDBC LrcXAResource in state NO_TX with XID null, already enlisted: an XAResourceHolderState with uniqueName=pcf_lrc XAResource=a JMS LrcXAResource in state STARTED of session Mock for Session"));
          }
          c2.close();
