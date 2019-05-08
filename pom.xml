@@ -38,6 +38,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <surefire.jvm.settings>-Xmx256m</surefire.jvm.settings>
+        <javaxJmsApiVersion>2.0.1</javaxJmsApiVersion>
     </properties>
 
     <modules>
@@ -101,9 +103,9 @@
                 <version>1.1.1</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.geronimo.specs</groupId>
-                <artifactId>geronimo-jms_1.1_spec</artifactId>
-                <version>1.1.1</version>
+                <groupId>javax.jms</groupId>
+                <artifactId>javax.jms-api</artifactId>
+                <version>${javaxJmsApiVersion}</version>
             </dependency>
 
             <dependency>

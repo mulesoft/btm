@@ -16,9 +16,10 @@
             <artifactId>jta</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.geronimo.specs</groupId>
-            <artifactId>geronimo-jms_1.1_spec</artifactId>
+            <groupId>javax.jms</groupId>
+            <artifactId>javax.jms-api</artifactId>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -101,22 +102,22 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <configuration>
-                    <doctitle>Bitronix Transaction Manager ${project.version} API</doctitle>
-                    <detectOfflineLinks>false</detectOfflineLinks>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-javadoc-plugin</artifactId>-->
+                <!--<configuration>-->
+                    <!--<doctitle>Bitronix Transaction Manager ${project.version} API</doctitle>-->
+                    <!--<detectOfflineLinks>false</detectOfflineLinks>-->
+                <!--</configuration>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<id>attach-javadocs</id>-->
+                        <!--<goals>-->
+                            <!--<goal>jar</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

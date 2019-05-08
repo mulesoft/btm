@@ -324,6 +324,19 @@ public class DualSessionWrapper extends AbstractXAResourceHolder implements Sess
         return messageConsumer;
     }
 
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String s) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String s, String s1) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
     public TopicSubscriber createDurableSubscriber(Topic topic, String name) throws JMSException {
         MessageProducerConsumerKey key = new MessageProducerConsumerKey(topic);
         if (log.isDebugEnabled()) log.debug("looking for durable subscriber based on " + key);
@@ -358,6 +371,31 @@ public class DualSessionWrapper extends AbstractXAResourceHolder implements Sess
         return topicSubscriber;
     }
 
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String s) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String s, String s1, boolean b) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String s) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String s, String s1) throws JMSException
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
     public MessageListener getMessageListener() throws JMSException {
         return listener;
     }

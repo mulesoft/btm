@@ -22,6 +22,7 @@ package bitronix.tm.resource.jms;
 
 import bitronix.tm.resource.common.TransactionContextHelper;
 
+import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -94,6 +95,35 @@ public class MessageProducerWrapper implements MessageProducer {
         getMessageProducer().send(destination, message, deliveryMode, priority, timeToLive);
     }
 
+    @Override
+    public void send(Message message, CompletionListener completionListener) throws JMSException
+    {
+        enlistResource();
+        getMessageProducer().send(message, completionListener);
+    }
+
+    @Override
+    public void send(Message message, int i, int i1, long l, CompletionListener completionListener) throws JMSException
+    {
+        enlistResource();
+        getMessageProducer().send(message, i, i1, l, completionListener);
+    }
+
+    @Override
+    public void send(Destination destination, Message message, CompletionListener completionListener) throws JMSException
+    {
+        enlistResource();
+        getMessageProducer().send(destination, message, completionListener);
+    }
+
+    @Override
+    public void send(Destination destination, Message message, int i, int i1, long l, CompletionListener completionListener) throws JMSException
+    {
+        enlistResource();
+        getMessageProducer().send(destination, message, i, i1, l, completionListener);
+    }
+
+    @Override
     public void close() throws JMSException {
         getMessageProducer().close();
     }
@@ -140,6 +170,19 @@ public class MessageProducerWrapper implements MessageProducer {
         return getMessageProducer().getTimeToLive();
     }
 
+    @Override
+    public void setDeliveryDelay(long l) throws JMSException
+    {
+        getMessageProducer().setDeliveryDelay(l);
+    }
+
+    @Override
+    public long getDeliveryDelay() throws JMSException
+    {
+        return getMessageProducer().getDeliveryDelay();
+    }
+
+    @Override
     public Destination getDestination() throws JMSException {
         return getMessageProducer().getDestination();
     }

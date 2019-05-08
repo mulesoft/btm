@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
+import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
@@ -154,6 +155,31 @@ public class PoolingConnectionFactory extends ResourceBean implements Connection
         return createConnection();
     }
 
+    @Override
+    public JMSContext createContext()
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public JMSContext createContext(String s, String s1)
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public JMSContext createContext(String s, String s1, int i)
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
+    public JMSContext createContext(int i)
+    {
+        throw new RuntimeException("Method not supported");
+    }
+
+    @Override
     public String toString() {
         return "a PoolingConnectionFactory with " + pool;
     }
