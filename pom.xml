@@ -38,7 +38,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <surefire.jvm.settings>-Xmx256m</surefire.jvm.settings>
         <javaxJmsApiVersion>2.0.1</javaxJmsApiVersion>
     </properties>
 
