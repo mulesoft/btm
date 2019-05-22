@@ -20,15 +20,14 @@
  */
 package bitronix.tm.mock.resource.jms;
 
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import javax.jms.*;
-
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import bitronix.tm.mock.resource.MockXAResource;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageConsumer;
@@ -41,13 +40,9 @@ import javax.jms.XAConnectionFactory;
 import javax.jms.XAJMSContext;
 import javax.jms.XASession;
 
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import bitronix.tm.mock.resource.MockXAResource;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 /**
  *
@@ -111,7 +106,7 @@ public class MockXAConnectionFactory implements XAConnectionFactory {
 	}
 
 	@Override
-	public XAJMSContext createXAContext(String s, String s1)
+	public XAJMSContext createXAContext(String userName, String password)
 	{
 		throw new RuntimeException("Method not supported");
 	}
