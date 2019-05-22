@@ -19,7 +19,6 @@
             <groupId>javax.jms</groupId>
             <artifactId>javax.jms-api</artifactId>
             <optional>true</optional>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -98,6 +97,25 @@
                         <id>attach-test-sources</id>
                         <goals>
                             <goal>test-jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doctitle>Bitronix Transaction Manager ${project.version} API</doctitle>
+                    <detectOfflineLinks>false</detectOfflineLinks>
+                    <additionalparam>-Xdoclint:none</additionalparam>
+                    <additionalOptions>-Xdoclint:none</additionalOptions>
+                    <additionalJOption>-Xdoclint:none</additionalJOption>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>
