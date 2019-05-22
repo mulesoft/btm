@@ -93,7 +93,7 @@ public class LrcXAConnectionFactory implements XAConnectionFactory {
     }
 
     @Override
-    public XAJMSContext createXAContext(String s, String s1)
+    public XAJMSContext createXAContext(String userName, String password)
     {
         throw new RuntimeException("Method not supported");
     }

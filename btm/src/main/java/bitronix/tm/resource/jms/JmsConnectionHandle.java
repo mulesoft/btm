@@ -62,7 +62,7 @@ public class JmsConnectionHandle implements Connection {
     }
 
     @Override
-    public Session createSession(int i) throws JMSException
+    public Session createSession(int sessionMode) throws JMSException
     {
         throw new RuntimeException("Method not supported");
     }
@@ -122,7 +122,7 @@ public class JmsConnectionHandle implements Connection {
     }
 
     @Override
-    public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String s, String s1, ServerSessionPool serverSessionPool, int i) throws JMSException
+    public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String subscriptionName, String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException
     {
         throw new RuntimeException("Method not supported");
     }
@@ -133,7 +133,7 @@ public class JmsConnectionHandle implements Connection {
     }
 
     @Override
-    public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic, String s, String s1, ServerSessionPool serverSessionPool, int i) throws JMSException
+    public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic, String subscriptionName, String messageSelector, ServerSessionPool sessionPool, int maxMessages) throws JMSException
     {
         throw new RuntimeException("Method not supported");
     }

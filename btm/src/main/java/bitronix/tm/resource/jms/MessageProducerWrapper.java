@@ -103,10 +103,10 @@ public class MessageProducerWrapper implements MessageProducer {
     }
 
     @Override
-    public void send(Message message, int i, int i1, long l, CompletionListener completionListener) throws JMSException
+    public void send(Message message, int deliveryMode, int priority, long timeToLive, CompletionListener completionListener) throws JMSException
     {
         enlistResource();
-        getMessageProducer().send(message, i, i1, l, completionListener);
+        getMessageProducer().send(message, deliveryMode, priority, timeToLive, completionListener);
     }
 
     @Override
@@ -117,10 +117,10 @@ public class MessageProducerWrapper implements MessageProducer {
     }
 
     @Override
-    public void send(Destination destination, Message message, int i, int i1, long l, CompletionListener completionListener) throws JMSException
+    public void send(Destination destination, Message message, int deliveryMode, int priority, long timeToLive, CompletionListener completionListener) throws JMSException
     {
         enlistResource();
-        getMessageProducer().send(destination, message, i, i1, l, completionListener);
+        getMessageProducer().send(destination, message, deliveryMode, priority, timeToLive, completionListener);
     }
 
     @Override
@@ -171,9 +171,9 @@ public class MessageProducerWrapper implements MessageProducer {
     }
 
     @Override
-    public void setDeliveryDelay(long l) throws JMSException
+    public void setDeliveryDelay(long deliveryDelay) throws JMSException
     {
-        getMessageProducer().setDeliveryDelay(l);
+        getMessageProducer().setDeliveryDelay(deliveryDelay);
     }
 
     @Override

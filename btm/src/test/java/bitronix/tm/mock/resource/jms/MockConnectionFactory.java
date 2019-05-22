@@ -66,19 +66,19 @@ public class MockConnectionFactory implements ConnectionFactory {
 	}
 
 	@Override
-	public JMSContext createContext(String s, String s1)
+	public JMSContext createContext(String userName, String password)
 	{
 		throw new RuntimeException("Method not supported");
 	}
 
 	@Override
-	public JMSContext createContext(String s, String s1, int i)
+	public JMSContext createContext(String userName, String password, int sessionMode)
 	{
 		throw new RuntimeException("Method not supported");
 	}
 
 	@Override
-	public JMSContext createContext(int i)
+	public JMSContext createContext(int sessionMode)
 	{
 		throw new RuntimeException("Method not supported");
 	}
