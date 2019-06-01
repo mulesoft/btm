@@ -20,6 +20,23 @@
  */
 package bitronix.tm.resource.jms;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.jms.JMSException;
+import javax.jms.Session;
+import javax.jms.TemporaryQueue;
+import javax.jms.XAConnection;
+import javax.jms.XASession;
+
 import bitronix.tm.internal.BitronixSystemException;
 import bitronix.tm.resource.common.AbstractXAStatefulHolder;
 import bitronix.tm.resource.common.RecoveryXAResourceHolder;
@@ -35,19 +52,6 @@ import bitronix.tm.utils.Scheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.JMSException;
-import javax.jms.Session;
-import javax.jms.TemporaryQueue;
-import javax.jms.XAConnection;
-import javax.jms.XASession;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 /**
  * Implementation of a JMS pooled connection wrapping vendor's {@link XAConnection} implementation.
  *
@@ -60,7 +64,12 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
 
     private final XAConnection xaConnection;
     private final PoolingConnectionFactory poolingConnectionFactory;
-    private final List<DualSessionWrapper> sessions = Collections.synchronizedList(new ArrayList<DualSessionWrapper>());
+    private final List<DualSessionWrapper> sessions = new LinkedList<>();
+
+    private final ReadWriteLock sessionsReadWriteLock = new ReentrantReadWriteLock();
+    private final Lock sessionsReadLock = sessionsReadWriteLock.readLock();
+    private final Lock sessionsWriteLock = sessionsReadWriteLock.writeLock();
+
     private boolean closed = false;
 
     /* management */
@@ -110,8 +119,11 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
     public List<XAResourceHolder> getXAResourceHolders() {
-        synchronized (sessions) {
+        sessionsReadLock.lock();
+        try {
             return new ArrayList<XAResourceHolder>(sessions);
+        } finally {
+            sessionsReadLock.unlock();
         }
     }
 
@@ -164,7 +176,8 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
     private void closePendingSessions() {
-        synchronized (sessions) {
+        sessionsReadLock.lock();
+        try {
             for (DualSessionWrapper dualSessionWrapper : sessions) {
                 if (dualSessionWrapper.getState() != STATE_ACCESSIBLE)
                     continue;
@@ -176,6 +189,8 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
                     log.warn("error closing pending session " + dualSessionWrapper, ex);
                 }
             }
+        } finally {
+            sessionsReadLock.unlock();
         }
     }
 
@@ -186,8 +201,12 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
             if (log.isDebugEnabled()) log.debug("no session handle found in NOT_ACCESSIBLE state, creating new session");
             sessionHandle = new DualSessionWrapper(this, transacted, acknowledgeMode);
             sessionHandle.addStateChangeEventListener(new JmsConnectionHandleStateChangeListener());
-            synchronized (sessions) {
+
+            sessionsWriteLock.lock();
+            try {
                 sessions.add(sessionHandle);
+            } finally {
+                sessionsWriteLock.unlock();
             }
         }
         else {
@@ -199,13 +218,17 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
      private DualSessionWrapper getNotAccessibleSession() {
-        synchronized (sessions) {
+        sessionsReadLock.lock();
+
+        try {
             if (log.isDebugEnabled()) log.debug(sessions.size() + " session(s) open from " + this);
             for (DualSessionWrapper sessionHandle : sessions) {
                 if (sessionHandle.getState() == XAResourceHolder.STATE_NOT_ACCESSIBLE)
                     return sessionHandle;
             }
             return null;
+        } finally {
+            sessionsReadLock.unlock();
         }
     }
 
@@ -214,10 +237,8 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
     public String toString() {
-        synchronized (sessions) {
             return "a JmsPooledConnection of pool " + poolingConnectionFactory.getUniqueName() + " in state " +
                     Decoder.decodeXAStatefulHolderState(getState()) + " with underlying connection " + xaConnection;
-        }
     }
 
     /* management */
@@ -231,12 +252,15 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
     public Collection<String> getTransactionGtridsCurrentlyHoldingThis() {
-        synchronized (sessions) {
-            Set<String> result = new HashSet<String>();
+        sessionsWriteLock.lock();
+        try {
+            Set<String> result = new HashSet<>();
             for (DualSessionWrapper dsw : sessions) {
                 result.addAll(dsw.getXAResourceHolderStateGtrids());
             }
             return result;
+        } finally {
+            sessionsWriteLock.unlock();
         }
     }
 
@@ -270,9 +294,12 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     private class JmsConnectionHandleStateChangeListener implements StateChangeListener {
         public void stateChanged(XAStatefulHolder source, int oldState, int newState) {
             if (newState == XAResourceHolder.STATE_CLOSED) {
-                synchronized (sessions) {
+                sessionsWriteLock.lock();
+                try {
                     sessions.remove(source);
                     if (log.isDebugEnabled()) log.debug("DualSessionWrapper has been closed, " + sessions.size() + " session(s) left open in pooled connection");
+                } finally {
+                    sessionsWriteLock.unlock();
                 }
             }
         }
