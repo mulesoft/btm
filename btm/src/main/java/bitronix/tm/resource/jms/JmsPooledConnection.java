@@ -182,6 +182,7 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
                 if (dualSessionWrapper.getState() != STATE_ACCESSIBLE)
                     continue;
 
+                // performing classic ReentrantReadLock downgrade.
                 sessionsReadLock.unlock();
                 sessionsWriteLock.lock();
                 try {
@@ -192,12 +193,13 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
                 } catch (JMSException ex) {
                     log.warn("error closing pending session " + dualSessionWrapper, ex);
                 } finally {
+                    // acquire read lock before releasing the write one to complete downgrade.
                     sessionsReadLock.lock();
                     sessionsWriteLock.unlock();
                 }
             }
         } finally {
-            sessionsWriteLock.unlock();
+            sessionsReadLock.unlock();
         }
     }
 
