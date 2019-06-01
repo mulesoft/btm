@@ -176,7 +176,7 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
     }
 
     private void closePendingSessions() {
-        sessionsReadLock.lock();
+        sessionsWriteLock.lock();
         try {
             for (DualSessionWrapper dualSessionWrapper : sessions) {
                 if (dualSessionWrapper.getState() != STATE_ACCESSIBLE)
@@ -190,7 +190,7 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
                 }
             }
         } finally {
-            sessionsReadLock.unlock();
+            sessionsWriteLock.unlock();
         }
     }
 
