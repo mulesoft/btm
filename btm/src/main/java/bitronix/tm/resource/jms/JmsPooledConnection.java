@@ -190,14 +190,18 @@ public class JmsPooledConnection extends AbstractXAStatefulHolder implements Jms
         }
 
         for (DualSessionWrapper dualSessionWrapper : sessionToIterate) {
-            if (dualSessionWrapper.getState() != STATE_ACCESSIBLE)
+            if (dualSessionWrapper.getState() != STATE_ACCESSIBLE) {
                 continue;
+            }
 
             sessionsWriteLock.lock();
             try {
-                if (dualSessionWrapper.getState() != STATE_ACCESSIBLE)
+                if (dualSessionWrapper.getState() != STATE_ACCESSIBLE) {
                     continue;
-                if (log.isDebugEnabled()) log.debug("trying to close pending session " + dualSessionWrapper);
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("trying to close pending session " + dualSessionWrapper);
+                }
                 dualSessionWrapper.close();
             } catch (JMSException ex) {
                 log.warn("error closing pending session " + dualSessionWrapper, ex);
