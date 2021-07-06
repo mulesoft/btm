@@ -146,7 +146,7 @@ public class XAResourceManager {
         for (XAResourceHolderState xaResourceHolderState : resources) {
             if (!xaResourceHolderState.isEnded()) {
                 if (log.isDebugEnabled()) log.debug("suspending " + xaResourceHolderState);
-                xaResourceHolderState.end(XAResource.TMSUCCESS);
+                xaResourceHolderState.end(XAResource.TMSUSPEND);
             }
         } // while
     }
@@ -156,29 +156,12 @@ public class XAResourceManager {
      * @throws XAException if the resource threw an exception during resume.
      */
     public void resume() throws XAException {
-        // all XAResource needs to be re-enlisted but this must happen
-        // outside the Scheduler's iteration as enlist() can change the
-        // collection's content and confuse the iterator.
-        List<XAResourceHolderState> toBeReEnlisted = new ArrayList<XAResourceHolderState>();
-
         for (XAResourceHolderState xaResourceHolderState : resources) {
-            if (log.isDebugEnabled()) log.debug("resuming " + xaResourceHolderState);
-
-            // If a prepared statement is (re-)used after suspend/resume is performed its XAResource needs to be
-            // re-enlisted. This must be done outside this loop or that will confuse the iterator!
-            toBeReEnlisted.add(new XAResourceHolderState(xaResourceHolderState));
-        }
-
-        if (toBeReEnlisted.size() > 0 && log.isDebugEnabled()) log.debug("re-enlisting " + toBeReEnlisted.size() + " resource(s)");
-        for (XAResourceHolderState xaResourceHolderState : toBeReEnlisted) {
-            if (log.isDebugEnabled()) log.debug("re-enlisting resource " + xaResourceHolderState);
-            try {
-                enlist(xaResourceHolderState);
-                xaResourceHolderState.getXAResourceHolder().putXAResourceHolderState(xaResourceHolderState.getXid(), xaResourceHolderState);
-            } catch (BitronixSystemException ex) {
-                throw new BitronixXAException("error re-enlisting resource during resume: " + xaResourceHolderState, XAException.XAER_RMERR, ex);
+            if (!xaResourceHolderState.isEnded()) {
+                if (log.isDebugEnabled()) log.debug("resuming " + xaResourceHolderState);
+                xaResourceHolderState.start(XAResource.TMRESUME);
             }
-        }
+        } // while
     }
 
     /**
