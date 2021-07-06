@@ -113,6 +113,14 @@ public class LrcXAResource implements XAResource {
     }
 
     public void start(Xid xid, int flag) throws XAException {
+    	if (flag == XAResource.TMRESUME) {
+            if (state != STARTED) {
+                throw new BitronixXAException("resource not started on XID " + this.xid, XAException.XAER_PROTO);
+            }
+    		log.warn("Resume not supported, maybe some commits from the suspend state on XID " + xid);
+    		// Do not throw exception as this is just emulating XA
+    		return;
+    	}
         if (flag != XAResource.TMNOFLAGS  && flag != XAResource.TMJOIN)
             throw new BitronixXAException("unsupported start flag " + Decoder.decodeXAResourceFlag(flag), XAException.XAER_RMERR);
         if (xid == null)
@@ -161,6 +169,14 @@ public class LrcXAResource implements XAResource {
     }
 
     public void end(Xid xid, int flag) throws XAException {
+    	if (flag == XAResource.TMSUSPEND) {
+            if (state != STARTED) {
+                throw new BitronixXAException("resource not started on XID " + this.xid, XAException.XAER_PROTO);
+            }
+    		log.warn("Suspend not supported on XID " + xid + " keep started state.");
+    		// Do not throw exception as this is just emulating XA
+    		return;
+    	}
         if (flag != XAResource.TMSUCCESS && flag != XAResource.TMFAIL)
             throw new BitronixXAException("unsupported end flag " + Decoder.decodeXAResourceFlag(flag), XAException.XAER_RMERR);
         if (xid == null)
