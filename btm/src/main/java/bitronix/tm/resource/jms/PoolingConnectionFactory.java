@@ -149,7 +149,10 @@ public class PoolingConnectionFactory extends ResourceBean implements Connection
             ResourceRegistrar.register(this);
         } catch (RecoveryException ex) {
             if (builtXaFactory) xaConnectionFactory = null;
-            pool = null;
+            if(pool!=null){
+                pool.close();
+                pool = null;
+            }
             throw ex;
         }
     }
