@@ -427,7 +427,7 @@ public class XAPool implements StateChangeListener {
         for (int i = (int)totalPoolSize(); i < bean.getMinPoolSize() ;i++) {
             createPooledObject(xaFactory);
         }
-        }catch(Exception ex){
+        } catch(Exception ex) {
             log.error("Exception caught when growing the pool. {} connections might be leaked",objects.size(),ex);
             throw ex;
         }
