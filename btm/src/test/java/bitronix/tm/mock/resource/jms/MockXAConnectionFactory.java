@@ -62,8 +62,8 @@ public class MockXAConnectionFactory implements XAConnectionFactory {
         if (staticCreateXAConnectionException != null)
             throw staticCreateXAConnectionException;
 
-        if(connectionsToFail>0 && connectionsToFail==connections.size()){
-        		throw new JMSException("Max number of connections reached");
+        if (connectionsToFail > 0 && connectionsToFail == connections.size()) {
+                throw new JMSException("Max number of connections reached");
         }
 
     	Answer xaSessionAnswer = new Answer<XASession>() {
