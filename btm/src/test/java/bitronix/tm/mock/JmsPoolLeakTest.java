@@ -40,19 +40,15 @@ public class JmsPoolLeakTest extends TestCase
         MockXAConnectionFactory.resetStatus();
         MockXAConnectionFactory.setStaticConnectionsToFail(2);
 
-        try
-        {
+        try {
             pcf.init();
-        }catch (Exception ex){
-            for(XAConnection connection :MockXAConnectionFactory.getConnections())
-            {
+        } catch (Exception ex) {
+            for(XAConnection connection : MockXAConnectionFactory.getConnections()) {
                 verify(connection,times(1)).close();
             }
-        }finally
-        {
+        } finally {
             MockXAConnectionFactory.setStaticConnectionsToFail(0);
             MockXAConnectionFactory.resetStatus();
-
         }
     }
 }
