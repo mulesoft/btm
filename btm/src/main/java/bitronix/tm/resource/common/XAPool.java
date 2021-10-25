@@ -87,10 +87,9 @@ public class XAPool implements StateChangeListener {
     }
 
     private synchronized void init() throws Exception {
-        try
-        {
+        try {
             growUntilMinPoolSize();
-        }catch(Exception ex){
+        } catch(Exception ex) {
             log.warn("Exception found when growing the pool. Cleaning {} dangling connections",objects.size());
             close();
             setFailed(true);
