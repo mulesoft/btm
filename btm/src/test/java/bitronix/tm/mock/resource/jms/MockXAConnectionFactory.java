@@ -131,15 +131,15 @@ public class MockXAConnectionFactory implements XAConnectionFactory {
         staticCreateXAConnectionException = e;
     }
 
-    public static void setStaticConnectionsToFail(int failAfterConnections){
-    	connectionsToFail = failAfterConnections;
+        public static void setStaticConnectionsToFail(int failAfterConnections) {
+                connectionsToFail = failAfterConnections;
 	}
 
-	public static void resetStatus(){
-    	connections= new ArrayList<>();
+	public static void resetStatus() {
+    	        connections= new ArrayList<>();
 	}
-	public static List<XAConnection> getConnections(){
-    	return connections;
+	public static List<XAConnection> getConnections() {
+    	        return connections;
 	}
 
 }
