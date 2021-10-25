@@ -101,9 +101,9 @@ public class MockXAConnectionFactory implements XAConnectionFactory {
         if (staticCloseXAConnectionException != null)
             doThrow(staticCloseXAConnectionException).when(mockXAConnection).close();
 
-        if(connectionsToFail>0){
-        	connections.add(mockXAConnection);
-		}
+        if (connectionsToFail > 0) {
+                connections.add(mockXAConnection);
+	}
         return mockXAConnection;
     }
 
