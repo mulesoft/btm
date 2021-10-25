@@ -423,7 +423,7 @@ public class XAPool implements StateChangeListener {
     }
 
     private synchronized void growUntilMinPoolSize() throws Exception {
-        try{
+        try {
         for (int i = (int)totalPoolSize(); i < bean.getMinPoolSize() ;i++) {
             createPooledObject(xaFactory);
         }
