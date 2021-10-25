@@ -86,9 +86,9 @@ public class PoolingConnectionFactory extends ResourceBean implements Connection
             ManagementRegistrar.register(jmxName, this);
         }
         catch (Exception ex) {
-            if(pool!=null){
+            if(pool != null){
                 pool.close();
-                pool=null;
+                pool = null;
             }
             throw new ResourceConfigurationException("cannot create JMS connection factory named " + getUniqueName(), ex);
         }
