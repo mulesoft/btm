@@ -303,6 +303,17 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
     }
 
     /**
+     * Dump an overview of all running transactions as info logs.
+     */
+    public void dumpTransactionContextsInfo() {
+        log.info("dumping " + inFlightTransactions.size() + " transaction context(s)");
+        for (Map.Entry<Uid, BitronixTransaction> entry : inFlightTransactions.entrySet()) {
+            BitronixTransaction tx = entry.getValue();
+            log.info(tx.toString());
+        }
+    }
+
+    /**
      * Shut down the transaction manager and release all resources held by it.
      * <p>This call will also close the resources pools registered by the {@link bitronix.tm.resource.ResourceLoader}
      * like JMS and JDBC pools. The manually created ones are left untouched.</p>
@@ -347,14 +358,14 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
 
     private void internalShutdown() {
         shuttingDown = true;
-        dumpTransactionContexts();
+        dumpTransactionContextsInfo();
 
         int seconds = TransactionManagerServices.getConfiguration().getGracefulShutdownInterval();
         int txCount = 0;
         try {
             txCount = inFlightTransactions.size();
             while (seconds > 0  &&  txCount > 0) {
-                if (log.isDebugEnabled()) log.debug("still " + txCount + " in-flight transactions, waiting... (" + seconds + " second(s) left)");
+                log.info("still " + txCount + " in-flight transactions, waiting... (" + seconds + " second(s) left)");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ex) {
@@ -368,11 +379,11 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         }
 
         if (txCount > 0) {
-            if (log.isDebugEnabled()) log.debug("still " + txCount + " in-flight transactions, shutting down anyway");
-            dumpTransactionContexts();
+            log.info("still " + txCount + " in-flight transactions, shutting down anyway");
+            dumpTransactionContextsInfo();
         }
         else {
-            if (log.isDebugEnabled()) log.debug("all transactions finished, resuming shutdown");
+        	log.info("all transactions finished, resuming shutdown");
         }
     }
 
