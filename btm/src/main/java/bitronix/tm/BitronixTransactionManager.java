@@ -332,28 +332,28 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         log.info("shutting down Bitronix Transaction Manager");
         internalShutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down resource loader");
+        log.info("shutting down resource loader");
         TransactionManagerServices.getResourceLoader().shutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down executor");
+        log.info("shutting down executor");
         TransactionManagerServices.getExecutor().shutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down task scheduler");
+        log.info("shutting down task scheduler");
         TransactionManagerServices.getTaskScheduler().shutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down journal");
+        log.info("shutting down journal");
         TransactionManagerServices.getJournal().shutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down recoverer");
+        log.info("shutting down recoverer");
         TransactionManagerServices.getRecoverer().shutdown();
 
-        if (log.isDebugEnabled()) log.debug("shutting down configuration");
+        log.info("shutting down configuration");
         TransactionManagerServices.getConfiguration().shutdown();
 
         // clear references
         TransactionManagerServices.clear();
 
-        if (log.isDebugEnabled()) log.debug("shutdown ran successfully");
+        log.info("shutdown ran successfully");
     }
 
     private void internalShutdown() {
