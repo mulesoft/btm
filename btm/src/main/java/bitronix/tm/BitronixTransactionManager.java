@@ -401,7 +401,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
 		inFlightTransactions.clear();
 	}
 
-	public String toString() {
+    public String toString() {
         return "a BitronixTransactionManager with " + inFlightTransactions.size() + " in-flight transaction(s)";
     }
 
