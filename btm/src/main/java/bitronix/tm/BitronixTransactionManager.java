@@ -370,13 +370,38 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         if (txCount > 0) {
             if (log.isDebugEnabled()) log.debug("still " + txCount + " in-flight transactions, shutting down anyway");
             dumpTransactionContexts();
+            rollbackAllInFlightTransactions();
         }
         else {
             if (log.isDebugEnabled()) log.debug("all transactions finished, resuming shutdown");
         }
     }
 
-    public String toString() {
+    /**
+     * Rollback all inflight transactions when shutting down to inform all resource holders (specially XA ones)
+     * nothing more will happen here.
+     * This avoids indoubt threads like
+     * <pre>
+     *  V466-THREAD HAS BEEN INDOUBT FOR 27:25:58
+     *  V451-RESYNC WITH COORDINATOR STILL PENDING
+     * </pre>
+     */
+	private void rollbackAllInFlightTransactions() {
+		log.warn("Rollback all remaining "+inFlightTransactions.size()+" inFlightTransactions");
+        for (Map.Entry<Uid, BitronixTransaction> entry : inFlightTransactions.entrySet()) {
+            BitronixTransaction tx = entry.getValue();
+            try {
+        		log.warn("Rollback Uid="+entry.getKey()+" inFlightTransaction="+tx.toString());
+        		tx.rollback();
+            } catch (SystemException e) {
+        		log.warn("Ignore Exception when rolling back during shutdown Uid="+entry.getKey()+" inFlightTransaction="+tx.toString());
+			}
+        }
+		log.info("Rollback of remaining inFlightTransactions finished.");
+		inFlightTransactions.clear();
+	}
+
+	public String toString() {
         return "a BitronixTransactionManager with " + inFlightTransactions.size() + " in-flight transaction(s)";
     }
 
