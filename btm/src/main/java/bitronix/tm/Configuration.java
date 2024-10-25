@@ -20,20 +20,20 @@
  */
 package bitronix.tm;
 
-import bitronix.tm.utils.ClassLoaderUtils;
-import bitronix.tm.utils.InitializationException;
-import bitronix.tm.utils.PropertyException;
-import bitronix.tm.utils.PropertyUtils;
-import bitronix.tm.utils.Service;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.utils.ClassLoaderUtils;
+import bitronix.tm.utils.InitializationException;
+import bitronix.tm.utils.PropertyException;
+import bitronix.tm.utils.PropertyUtils;
+import bitronix.tm.utils.Service;
 
 /**
  * Configuration repository of the transaction manager. You can set configurable values either via the properties file
@@ -117,7 +117,7 @@ public class Configuration implements Service {
             defaultTransactionTimeout = getInt(properties, PROPERTY_PREFIX + ".timer.defaultTransactionTimeout", 60);
             gracefulShutdownInterval = getInt(properties, PROPERTY_PREFIX + ".timer.gracefulShutdownInterval", 60);
             backgroundRecoveryIntervalSeconds = getInt(properties, PROPERTY_PREFIX + ".timer.backgroundRecoveryIntervalSeconds", 60);
-            disableJmx = getBoolean(properties, PROPERTY_PREFIX + ".disableJmx", false);
+            disableJmx = getBoolean(properties, PROPERTY_PREFIX + ".disableJmx", true);
             jndiUserTransactionName = getString(properties, PROPERTY_PREFIX + ".jndi.userTransactionName", "java:comp/UserTransaction");
             jndiTransactionSynchronizationRegistryName = getString(properties, PROPERTY_PREFIX + ".jndi.transactionSynchronizationRegistryName", "java:comp/TransactionSynchronizationRegistry");
             journal = getString(properties, PROPERTY_PREFIX + ".journal", "disk");
