@@ -20,8 +20,11 @@
  */
 package bitronix.tm.mock.resource.jms;
 
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -41,11 +44,11 @@ import org.mockito.stubbing.Answer;
 public class MockConnectionFactory implements ConnectionFactory {
 
     public Connection createConnection() throws JMSException {
-    	Answer<Session> sessionAnswer = new Answer<Session>() {
+    	Answer<Session> sessionAnswer =  new Answer<Session>() {
 			public Session answer(InvocationOnMock invocation) throws Throwable {
 				Session session = mock(Session.class);
 				MessageProducer producer = mock(MessageProducer.class);
-				when(session.createProducer((Destination) anyObject())).thenReturn(producer);
+				when(session.createProducer((Destination) any())).thenReturn(producer);
 				return session;
 			}
     	};
