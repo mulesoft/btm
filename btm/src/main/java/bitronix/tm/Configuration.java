@@ -51,6 +51,8 @@ import java.util.Properties;
 public class Configuration implements Service {
 
     private final static Logger log = LoggerFactory.getLogger(Configuration.class);
+    private final static String PROPERTY_PREFIX = Configuration.class.getPackageName();
+    private final static String JOURNAL_FILENAME_PREFIX = PROPERTY_PREFIX.replace("bitronix.tm", "btm");
 
     private final static int MAX_SERVER_ID_LENGTH = 51;
 
@@ -84,7 +86,7 @@ public class Configuration implements Service {
             InputStream in = null;
             Properties properties;
             try {
-                String configurationFilename = System.getProperty("bitronix.tm.configuration");
+                String configurationFilename = System.getProperty(PROPERTY_PREFIX + ".configuration");
                 if (configurationFilename != null) {
                     if (log.isDebugEnabled()) log.debug("loading configuration file " + configurationFilename);
                     in = new FileInputStream(configurationFilename);
@@ -101,28 +103,28 @@ public class Configuration implements Service {
                 if (in != null) in.close();
             }
 
-            serverId = getString(properties, "bitronix.tm.serverId", null);
-            logPart1Filename = getString(properties, "bitronix.tm.journal.disk.logPart1Filename", "btm1.tlog");
-            logPart2Filename = getString(properties, "bitronix.tm.journal.disk.logPart2Filename", "btm2.tlog");
-            forcedWriteEnabled = getBoolean(properties, "bitronix.tm.journal.disk.forcedWriteEnabled", true);
-            forceBatchingEnabled = getBoolean(properties, "bitronix.tm.journal.disk.forceBatchingEnabled", true);
-            maxLogSizeInMb = getInt(properties, "bitronix.tm.journal.disk.maxLogSize", 2);
-            filterLogStatus = getBoolean(properties, "bitronix.tm.journal.disk.filterLogStatus", false);
-            skipCorruptedLogs = getBoolean(properties, "bitronix.tm.journal.disk.skipCorruptedLogs", false);
-            asynchronous2Pc = getBoolean(properties, "bitronix.tm.2pc.async", false);
-            warnAboutZeroResourceTransaction = getBoolean(properties, "bitronix.tm.2pc.warnAboutZeroResourceTransactions", true);
-            debugZeroResourceTransaction = getBoolean(properties, "bitronix.tm.2pc.debugZeroResourceTransactions", false);
-            defaultTransactionTimeout = getInt(properties, "bitronix.tm.timer.defaultTransactionTimeout", 60);
-            gracefulShutdownInterval = getInt(properties, "bitronix.tm.timer.gracefulShutdownInterval", 60);
-            backgroundRecoveryIntervalSeconds = getInt(properties, "bitronix.tm.timer.backgroundRecoveryIntervalSeconds", 60);
-            disableJmx = getBoolean(properties, "bitronix.tm.disableJmx", false);
-            jndiUserTransactionName = getString(properties, "bitronix.tm.jndi.userTransactionName", "java:comp/UserTransaction");
-            jndiTransactionSynchronizationRegistryName = getString(properties, "bitronix.tm.jndi.transactionSynchronizationRegistryName", "java:comp/TransactionSynchronizationRegistry");
-            journal = getString(properties, "bitronix.tm.journal", "disk");
-            exceptionAnalyzer = getString(properties, "bitronix.tm.exceptionAnalyzer", null);
-            currentNodeOnlyRecovery = getBoolean(properties, "bitronix.tm.currentNodeOnlyRecovery", true);
-            allowMultipleLrc = getBoolean(properties, "bitronix.tm.allowMultipleLrc", false);
-            resourceConfigurationFilename = getString(properties, "bitronix.tm.resource.configuration", null);
+            serverId = getString(properties, PROPERTY_PREFIX + ".serverId", null);
+            logPart1Filename = getString(properties, PROPERTY_PREFIX + ".journal.disk.logPart1Filename", JOURNAL_FILENAME_PREFIX + "1.tlog");
+            logPart2Filename = getString(properties, PROPERTY_PREFIX + ".journal.disk.logPart2Filename", JOURNAL_FILENAME_PREFIX + "2.tlog");
+            forcedWriteEnabled = getBoolean(properties, PROPERTY_PREFIX + ".journal.disk.forcedWriteEnabled", true);
+            forceBatchingEnabled = getBoolean(properties, PROPERTY_PREFIX + ".journal.disk.forceBatchingEnabled", true);
+            maxLogSizeInMb = getInt(properties, PROPERTY_PREFIX + ".journal.disk.maxLogSize", 2);
+            filterLogStatus = getBoolean(properties, PROPERTY_PREFIX + ".journal.disk.filterLogStatus", false);
+            skipCorruptedLogs = getBoolean(properties, PROPERTY_PREFIX + ".journal.disk.skipCorruptedLogs", false);
+            asynchronous2Pc = getBoolean(properties, PROPERTY_PREFIX + ".2pc.async", false);
+            warnAboutZeroResourceTransaction = getBoolean(properties, PROPERTY_PREFIX + ".2pc.warnAboutZeroResourceTransactions", true);
+            debugZeroResourceTransaction = getBoolean(properties, PROPERTY_PREFIX + ".2pc.debugZeroResourceTransactions", false);
+            defaultTransactionTimeout = getInt(properties, PROPERTY_PREFIX + ".timer.defaultTransactionTimeout", 60);
+            gracefulShutdownInterval = getInt(properties, PROPERTY_PREFIX + ".timer.gracefulShutdownInterval", 60);
+            backgroundRecoveryIntervalSeconds = getInt(properties, PROPERTY_PREFIX + ".timer.backgroundRecoveryIntervalSeconds", 60);
+            disableJmx = getBoolean(properties, PROPERTY_PREFIX + ".disableJmx", false);
+            jndiUserTransactionName = getString(properties, PROPERTY_PREFIX + ".jndi.userTransactionName", "java:comp/UserTransaction");
+            jndiTransactionSynchronizationRegistryName = getString(properties, PROPERTY_PREFIX + ".jndi.transactionSynchronizationRegistryName", "java:comp/TransactionSynchronizationRegistry");
+            journal = getString(properties, PROPERTY_PREFIX + ".journal", "disk");
+            exceptionAnalyzer = getString(properties, PROPERTY_PREFIX + ".exceptionAnalyzer", null);
+            currentNodeOnlyRecovery = getBoolean(properties, PROPERTY_PREFIX + ".currentNodeOnlyRecovery", true);
+            allowMultipleLrc = getBoolean(properties, PROPERTY_PREFIX + ".allowMultipleLrc", false);
+            resourceConfigurationFilename = getString(properties, PROPERTY_PREFIX + ".resource.configuration", null);
         } catch (IOException ex) {
             throw new InitializationException("error loading configuration", ex);
         }
