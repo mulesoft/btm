@@ -18,18 +18,17 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA 02110-1301 USA
  */
-package bitronix.tm.resource.jms;
+package bitronix.tm.resource.messaging;
 
-import java.util.Hashtable;
-import java.util.Properties;
-
-import javax.jms.JMSException;
-import javax.jms.XAConnection;
-import javax.jms.XAConnectionFactory;
-import javax.jms.XAJMSContext;
+import jakarta.jms.JMSException;
+import jakarta.jms.XAConnection;
+import jakarta.jms.XAConnectionFactory;
+import jakarta.jms.XAJMSContext;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+import java.util.Hashtable;
+import java.util.Properties;
 
 /**
  * {@link XAConnectionFactory} implementation that wraps another {@link XAConnectionFactory} implementation available
@@ -46,6 +45,7 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
     private volatile String securityPrincipal;
     private volatile String securityCredentials;
     private volatile Properties extraJndiProperties = new Properties();
+    private volatile boolean narrowJndiObject = false;
     private volatile XAConnectionFactory wrappedFactory;
 
 
@@ -168,13 +168,31 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
         this.extraJndiProperties = extraJndiProperties;
     }
 
+    /**
+     * Should {@link PortableRemoteObject#narrow(Object, Class)} be applied on the object looked up from
+     * JNDI before trying to cast it to {@link XAConnectionFactory} ?
+     * @return true if the object should be narrowed, false otherwise.
+     */
+    public boolean isNarrowJndiObject() {
+        return narrowJndiObject;
+    }
+
+    /**
+     * Set if {@link PortableRemoteObject#narrow(Object, Class)} should be applied on the object looked up from
+     * JNDI before trying to cast it to {@link XAConnectionFactory} ?
+     * @param narrowJndiObject true if the object should be narrowed, false otherwise.
+     */
+    public void setNarrowJndiObject(boolean narrowJndiObject) {
+        this.narrowJndiObject = narrowJndiObject;
+    }
+
     protected void init() throws NamingException {
         if (wrappedFactory != null)
             return;
 
         Context ctx;
         if (!isEmpty(initialContextFactory)) {
-            Hashtable<Object, Object> env = new Hashtable<>();
+            Hashtable<Object, Object> env = new Hashtable<Object, Object>();
             env.put(Context.INITIAL_CONTEXT_FACTORY, initialContextFactory);
             if (!isEmpty(providerUrl))
                 env.put(Context.PROVIDER_URL, providerUrl);
@@ -198,7 +216,7 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
                 //TODO (nicomz) review this
                 //https://svn.apache.org/viewvc/jackrabbit/trunk/jackrabbit-jcr-tests/src/main/java/org/apache/jackrabbit/test/JNDIRepositoryStub.java?r1=1836349&r2=1836348&pathrev=1836349
                 //wrappedFactory = (XAConnectionFactory) PortableRemoteObject.narrow(lookedUpObject, XAConnectionFactory.class);
-                if(lookedUpObject instanceof  XAConnectionFactory){
+                if(lookedUpObject instanceof XAConnectionFactory){
                     wrappedFactory = (XAConnectionFactory) lookedUpObject;
                 }
             }
@@ -211,7 +229,6 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
         }
     }
 
-    @Override
     public XAConnection createXAConnection() throws JMSException {
         try {
             init();
@@ -221,7 +238,6 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
         }
     }
 
-    @Override
     public XAConnection createXAConnection(String userName, String password) throws JMSException {
         try {
             init();
