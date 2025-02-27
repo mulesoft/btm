@@ -56,6 +56,7 @@ public class ResourceLoader implements Service {
 
     private final static String JDBC_RESOURCE_CLASSNAME = "bitronix.tm.resource.jdbc.PoolingDataSource";
     private final static String JMS_RESOURCE_CLASSNAME = "bitronix.tm.resource.jms.PoolingConnectionFactory";
+    private final static String MESSAGING_RESOURCE_CLASSNAME= "bitronix.tm.resource.messaging.PoolingConnectionFactory";
 
     private final Map<String, XAResourceProducer> resourcesByUniqueName = new HashMap<String, XAResourceProducer>();
 
@@ -121,12 +122,14 @@ public class ResourceLoader implements Service {
         // resource classes are instantiated via reflection so that there is no hard class binding between this internal
         // transaction manager service and 3rd party libraries like the JMS ones.
         // This allows using the TM with a 100% JDBC application without requiring JMS libraries.
-
+        //TODO (nicomz) refactor this
         if (XADataSource.class.isAssignableFrom(clazz)) {
             return (XAResourceProducer) ClassLoaderUtils.loadClass(JDBC_RESOURCE_CLASSNAME).newInstance();
         }
         else if (XAConnectionFactory.class.isAssignableFrom(clazz)) {
             return (XAResourceProducer) ClassLoaderUtils.loadClass(JMS_RESOURCE_CLASSNAME).newInstance();
+        }else if(jakarta.jms.XAConnectionFactory.class.isAssignableFrom(clazz)) {
+            return (XAResourceProducer) ClassLoaderUtils.loadClass(MESSAGING_RESOURCE_CLASSNAME).newInstance();
         }
         else
             return null;
