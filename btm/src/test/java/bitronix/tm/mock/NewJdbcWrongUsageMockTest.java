@@ -25,7 +25,7 @@ import java.sql.*;
 import java.util.List;
 
 import javax.sql.XAConnection;
-import javax.transaction.*;
+import jakarta.transaction.*;
 import javax.transaction.xa.*;
 
 import bitronix.tm.*;

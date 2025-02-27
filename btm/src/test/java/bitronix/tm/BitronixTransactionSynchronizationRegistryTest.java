@@ -22,7 +22,7 @@ package bitronix.tm;
 
 import junit.framework.TestCase;
 
-import javax.transaction.*;
+import jakarta.transaction.*;
 
 /**
  *

@@ -26,7 +26,7 @@ import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.transaction.Status;
+import jakarta.transaction.Status;
 import javax.transaction.xa.*;
 
 import junit.framework.TestCase;

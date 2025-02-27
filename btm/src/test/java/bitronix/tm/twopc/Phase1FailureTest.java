@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.sql.XAConnection;
-import javax.transaction.*;
+import jakarta.transaction.*;
 import javax.transaction.xa.XAException;
 
 import bitronix.tm.journal.Journal;

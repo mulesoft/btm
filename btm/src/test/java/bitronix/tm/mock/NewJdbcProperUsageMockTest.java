@@ -26,7 +26,7 @@ import java.sql.*;
 import java.util.*;
 
 import javax.sql.XAConnection;
-import javax.transaction.*;
+import jakarta.transaction.*;
 import javax.transaction.xa.*;
 
 import org.slf4j.*;

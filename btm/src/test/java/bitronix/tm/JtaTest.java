@@ -23,7 +23,7 @@ package bitronix.tm;
 import bitronix.tm.utils.DefaultExceptionAnalyzer;
 import junit.framework.TestCase;
 
-import javax.transaction.*;
+import jakarta.transaction.*;
 
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;

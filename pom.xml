@@ -38,6 +38,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <javaTransactionApiVersion>2.0.1</javaTransactionApiVersion>
+        <jakarta.cdi.version>3.0.0</jakarta.cdi.version>
+        <jakarta.interceptor.version>2.1.0</jakarta.interceptor.version>
         <javaxJmsApiVersion>2.0.1</javaxJmsApiVersion>
     </properties>
 
@@ -89,18 +92,22 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- this is the pom's JTA dependency -->
             <dependency>
-                <groupId>javax.transaction</groupId>
-                <artifactId>jta</artifactId>
-                <version>1.1</version>
+                <groupId>jakarta.transaction</groupId>
+                <artifactId>jakarta.transaction-api</artifactId>
+                <version>${javaTransactionApiVersion}</version>
             </dependency>
-            <!-- this is the dist's JTA dependency -->
             <dependency>
-                <groupId>org.apache.geronimo.specs</groupId>
-                <artifactId>geronimo-jta_1.1_spec</artifactId>
-                <version>1.1.1</version>
+                <groupId>jakarta.enterprise</groupId>
+                <artifactId>jakarta.enterprise.cdi-api</artifactId>
+                <version>${jakarta.cdi.version}</version>
             </dependency>
+            <dependency>
+                <groupId>jakarta.interceptor</groupId>
+                <artifactId>jakarta.interceptor-api</artifactId>
+                <version>${jakarta.interceptor.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>javax.jms</groupId>
                 <artifactId>javax.jms-api</artifactId>

@@ -20,20 +20,10 @@
  */
 package bitronix.tm.gui;
 
-import bitronix.tm.BitronixXid;
-import bitronix.tm.Configuration;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.utils.Uid;
-import bitronix.tm.journal.TransactionLogRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.swing.*;
-import javax.swing.border.EtchedBorder;
-import javax.transaction.Status;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
@@ -42,6 +32,33 @@ import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import javax.swing.BorderFactory;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JViewport;
+import javax.swing.border.EtchedBorder;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.BitronixXid;
+import bitronix.tm.Configuration;
+import bitronix.tm.TransactionManagerServices;
+import bitronix.tm.journal.TransactionLogRecord;
+import bitronix.tm.utils.Uid;
+import jakarta.transaction.Status;
 
 /**
  * <p></p>
@@ -98,19 +115,19 @@ public class Console extends JFrame {
 
         final JPopupMenu rawViewTransactionsTablePopupMenu = new JPopupMenu();
         final JCheckBoxMenuItem filterByGtridItem = new JCheckBoxMenuItem("Filter by GTRID");
-        filterByGtridItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                filterByGtrid(filterByGtridItem.isSelected());
-            }
-        });
+        filterByGtridItem.addActionListener(e -> filterByGtrid(filterByGtridItem.isSelected()));
         rawViewTransactionsTablePopupMenu.add(filterByGtridItem);
         rawViewTransactionsTable.addMouseListener(new MouseListener() {
+            @Override
             public void mouseClicked(MouseEvent e) {
             }
+            @Override
             public void mouseEntered(MouseEvent e) {
             }
+            @Override
             public void mouseExited(MouseEvent e) {
             }
+            @Override
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     rawViewTransactionsTablePopupMenu.show(e.getComponent(), e.getX(), e.getY());
@@ -118,6 +135,7 @@ public class Console extends JFrame {
                     selectTableRow(rawViewTransactionsTable, row);
                 }
             }
+            @Override
             public void mouseReleased(MouseEvent e) {
                 mousePressed(e);
             }
@@ -135,35 +153,15 @@ public class Console extends JFrame {
         statusBarPanel.add(transactionLogHeaderPanel2);
         statusBarPanel.add(statusLabel);
 
-        switchLogFilesItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                switchLogFiles(configuration);
-            }
-        });
+        switchLogFilesItem.addActionListener(evt -> switchLogFiles(configuration));
 
-        countDuplicatedGtridsItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                countDuplicatedGtrids();
-            }
-        });
+        countDuplicatedGtridsItem.addActionListener(evt -> countDuplicatedGtrids());
 
-        countByStatus.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                countByStatus();
-            }
-        });
+        countByStatus.addActionListener(evt -> countByStatus());
 
-        bySequenceItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                findBySequence();
-            }
-        });
+        bySequenceItem.addActionListener(evt -> findBySequence());
 
-        byGtridItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                findByGtrid();
-            }
-        });
+        byGtridItem.addActionListener(evt -> findByGtrid());
 
         setTitle("Bitronix Transaction Manager Console");
         setJMenuBar(menuBar);

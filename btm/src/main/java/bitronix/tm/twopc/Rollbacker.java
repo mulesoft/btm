@@ -29,9 +29,9 @@ import bitronix.tm.twopc.executor.Executor;
 import bitronix.tm.twopc.executor.Job;
 import bitronix.tm.internal.*;
 
-import javax.transaction.Status;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicCommitException;
+import jakarta.transaction.Status;
+import jakarta.transaction.HeuristicMixedException;
+import jakarta.transaction.HeuristicCommitException;
 import javax.transaction.xa.XAException;
 import java.util.List;
 import java.util.ArrayList;

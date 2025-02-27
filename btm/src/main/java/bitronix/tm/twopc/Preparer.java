@@ -29,8 +29,8 @@ import bitronix.tm.twopc.executor.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.transaction.Status;
-import javax.transaction.RollbackException;
+import jakarta.transaction.Status;
+import jakarta.transaction.RollbackException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import java.util.*;
