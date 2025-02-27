@@ -45,7 +45,6 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
     private volatile String securityPrincipal;
     private volatile String securityCredentials;
     private volatile Properties extraJndiProperties = new Properties();
-    private volatile boolean narrowJndiObject = false;
     private volatile XAConnectionFactory wrappedFactory;
 
 
@@ -168,31 +167,13 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
         this.extraJndiProperties = extraJndiProperties;
     }
 
-    /**
-     * Should {@link PortableRemoteObject#narrow(Object, Class)} be applied on the object looked up from
-     * JNDI before trying to cast it to {@link XAConnectionFactory} ?
-     * @return true if the object should be narrowed, false otherwise.
-     */
-    public boolean isNarrowJndiObject() {
-        return narrowJndiObject;
-    }
-
-    /**
-     * Set if {@link PortableRemoteObject#narrow(Object, Class)} should be applied on the object looked up from
-     * JNDI before trying to cast it to {@link XAConnectionFactory} ?
-     * @param narrowJndiObject true if the object should be narrowed, false otherwise.
-     */
-    public void setNarrowJndiObject(boolean narrowJndiObject) {
-        this.narrowJndiObject = narrowJndiObject;
-    }
-
     protected void init() throws NamingException {
         if (wrappedFactory != null)
             return;
 
         Context ctx;
         if (!isEmpty(initialContextFactory)) {
-            Hashtable<Object, Object> env = new Hashtable<Object, Object>();
+            Hashtable<Object, Object> env = new Hashtable<>();
             env.put(Context.INITIAL_CONTEXT_FACTORY, initialContextFactory);
             if (!isEmpty(providerUrl))
                 env.put(Context.PROVIDER_URL, providerUrl);
@@ -212,23 +193,14 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
 
         try {
             Object lookedUpObject = ctx.lookup(name);
-            if (narrowJndiObject) {
-                //TODO (nicomz) review this
-                //https://svn.apache.org/viewvc/jackrabbit/trunk/jackrabbit-jcr-tests/src/main/java/org/apache/jackrabbit/test/JNDIRepositoryStub.java?r1=1836349&r2=1836348&pathrev=1836349
-                //wrappedFactory = (XAConnectionFactory) PortableRemoteObject.narrow(lookedUpObject, XAConnectionFactory.class);
-                if(lookedUpObject instanceof XAConnectionFactory){
-                    wrappedFactory = (XAConnectionFactory) lookedUpObject;
-                }
-            }
-            else {
-                wrappedFactory = (XAConnectionFactory) lookedUpObject;
-            }
+            wrappedFactory = (XAConnectionFactory) lookedUpObject;
         }
         finally {
             ctx.close();
         }
     }
 
+    @Override
     public XAConnection createXAConnection() throws JMSException {
         try {
             init();
@@ -238,6 +210,7 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
         }
     }
 
+    @Override
     public XAConnection createXAConnection(String userName, String password) throws JMSException {
         try {
             init();

@@ -194,17 +194,7 @@ public class JndiXAConnectionFactory implements XAConnectionFactory {
 
         try {
             Object lookedUpObject = ctx.lookup(name);
-            if (narrowJndiObject) {
-                //TODO (nicomz) review this
-                //https://svn.apache.org/viewvc/jackrabbit/trunk/jackrabbit-jcr-tests/src/main/java/org/apache/jackrabbit/test/JNDIRepositoryStub.java?r1=1836349&r2=1836348&pathrev=1836349
-                //wrappedFactory = (XAConnectionFactory) PortableRemoteObject.narrow(lookedUpObject, XAConnectionFactory.class);
-                if(lookedUpObject instanceof  XAConnectionFactory){
-                    wrappedFactory = (XAConnectionFactory) lookedUpObject;
-                }
-            }
-            else {
-                wrappedFactory = (XAConnectionFactory) lookedUpObject;
-            }
+            wrappedFactory = (XAConnectionFactory) lookedUpObject;
         }
         finally {
             ctx.close();

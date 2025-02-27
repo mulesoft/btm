@@ -20,25 +20,28 @@
  */
 package bitronix.tm.resource;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import javax.jms.XAConnectionFactory;
+import javax.sql.XADataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import bitronix.tm.TransactionManagerServices;
 import bitronix.tm.resource.common.XAResourceProducer;
 import bitronix.tm.utils.ClassLoaderUtils;
 import bitronix.tm.utils.InitializationException;
 import bitronix.tm.utils.PropertyUtils;
 import bitronix.tm.utils.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.jms.XAConnectionFactory;
-import javax.sql.XADataSource;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * XA resources pools configurator & loader.
@@ -58,7 +61,7 @@ public class ResourceLoader implements Service {
     private final static String JMS_RESOURCE_CLASSNAME = "bitronix.tm.resource.jms.PoolingConnectionFactory";
     private final static String MESSAGING_RESOURCE_CLASSNAME= "bitronix.tm.resource.messaging.PoolingConnectionFactory";
 
-    private final Map<String, XAResourceProducer> resourcesByUniqueName = new HashMap<String, XAResourceProducer>();
+    private final Map<String, XAResourceProducer> resourcesByUniqueName = new HashMap<>();
 
     public ResourceLoader() {
     }
@@ -90,6 +93,7 @@ public class ResourceLoader implements Service {
         }
     }
 
+    @Override
     public synchronized void shutdown() {
         if (log.isDebugEnabled()) log.debug("resource loader has registered " + resourcesByUniqueName.entrySet().size() + " resource(s), unregistering them now");
         for (Map.Entry<String, XAResourceProducer> entry : resourcesByUniqueName.entrySet()) {
@@ -110,26 +114,29 @@ public class ResourceLoader implements Service {
 
     /**
      * Create an unitialized {@link XAResourceProducer} implementation which depends on the XA resource class name.
+     * 
      * @param xaResourceClassName an XA resource class name.
      * @return a {@link XAResourceProducer} implementation.
-     * @throws ClassNotFoundException if the {@link XAResourceProducer} cannot be instantiated.
-     * @throws IllegalAccessException if the {@link XAResourceProducer} cannot be instantiated.
-     * @throws InstantiationException if the {@link XAResourceProducer} cannot be instantiated.
+     * @throws ClassNotFoundException    if the {@link XAResourceProducer} cannot be instantiated.
+     * @throws IllegalAccessException    if the {@link XAResourceProducer} cannot be instantiated.
+     * @throws InstantiationException    if the {@link XAResourceProducer} cannot be instantiated.
+     * @throws NoSuchMethodException     if the {@link XAResourceProducer} cannot be instantiated.
+     * @throws InvocationTargetException if the {@link XAResourceProducer} cannot be instantiated.
      */
-    private static XAResourceProducer instantiate(String xaResourceClassName) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    private static XAResourceProducer instantiate(String xaResourceClassName) throws ClassNotFoundException,
+        IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         Class clazz = ClassLoaderUtils.loadClass(xaResourceClassName);
 
         // resource classes are instantiated via reflection so that there is no hard class binding between this internal
         // transaction manager service and 3rd party libraries like the JMS ones.
         // This allows using the TM with a 100% JDBC application without requiring JMS libraries.
-        //TODO (nicomz) refactor this
         if (XADataSource.class.isAssignableFrom(clazz)) {
-            return (XAResourceProducer) ClassLoaderUtils.loadClass(JDBC_RESOURCE_CLASSNAME).newInstance();
+          return (XAResourceProducer) ClassLoaderUtils.loadClass(JDBC_RESOURCE_CLASSNAME).getConstructor().newInstance();
         }
         else if (XAConnectionFactory.class.isAssignableFrom(clazz)) {
-            return (XAResourceProducer) ClassLoaderUtils.loadClass(JMS_RESOURCE_CLASSNAME).newInstance();
-        }else if(jakarta.jms.XAConnectionFactory.class.isAssignableFrom(clazz)) {
-            return (XAResourceProducer) ClassLoaderUtils.loadClass(MESSAGING_RESOURCE_CLASSNAME).newInstance();
+          return (XAResourceProducer) ClassLoaderUtils.loadClass(JMS_RESOURCE_CLASSNAME).getConstructor().newInstance();
+        } else if (jakarta.jms.XAConnectionFactory.class.isAssignableFrom(clazz)) {
+          return (XAResourceProducer) ClassLoaderUtils.loadClass(MESSAGING_RESOURCE_CLASSNAME).getConstructor().newInstance();
         }
         else
             return null;
@@ -198,7 +205,7 @@ public class ResourceLoader implements Service {
      * @return the built map.
      */
     private Map<String, List<PropertyPair>> buildConfigurationEntriesMap(Properties properties) {
-        Map<String, List<PropertyPair>> entries = new HashMap<String, List<PropertyPair>>();
+        Map<String, List<PropertyPair>> entries = new HashMap<>();
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             String key = (String) entry.getKey();
             String value = (String) entry.getValue();
@@ -219,7 +226,7 @@ public class ResourceLoader implements Service {
 
                 List<PropertyPair> pairs = entries.get(configuredName);
                 if (pairs == null) {
-                    pairs = new ArrayList<PropertyPair>();
+                    pairs = new ArrayList<>();
                     entries.put(configuredName, pairs);
                 }
 
@@ -267,7 +274,8 @@ public class ResourceLoader implements Service {
      * @throws IllegalAccessException if the {@link XAResourceProducer} cannot be instantiated.
      * @throws InstantiationException if the {@link XAResourceProducer} cannot be instantiated.
      */
-    private XAResourceProducer createBean(String configuredName, List<PropertyPair> propertyPairs) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    private XAResourceProducer createBean(String configuredName, List<PropertyPair> propertyPairs) throws ClassNotFoundException,
+        IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         for (PropertyPair propertyPair : propertyPairs) {
             if (propertyPair.getName().equals("className")) {
                 String className = propertyPair.getValue();
@@ -300,6 +308,7 @@ public class ResourceLoader implements Service {
             return value;
         }
 
+        @Override
         public String toString() {
             return name + "/" + value;
         }

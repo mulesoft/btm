@@ -21,15 +21,14 @@
 package bitronix.tm.resource.messaging;
 
 import bitronix.tm.internal.BitronixRuntimeException;
-
 import jakarta.jms.Destination;
 import jakarta.jms.JMSException;
 import jakarta.jms.Queue;
 import jakarta.jms.Topic;
 
 /**
- * JMS destination wrapper optimized for use with hashed collections where it is the key and a
- * {@link javax.jms.MessageProducer} or a {@link javax.jms.MessageConsumer} is the value.
+ * JMS destination wrapper optimized for use with hashed collections where it is the key and a {@link jakarta.jms.MessageProducer}
+ * or a {@link jakarta.jms.MessageConsumer} is the value.
  *
  * @author lorban
  */
@@ -57,10 +56,9 @@ public class MessageProducerConsumerKey {
         this.noLocal = noLocal;
     }
 
+    @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MessageProducerConsumerKey) {
-            MessageProducerConsumerKey otherKey = (MessageProducerConsumerKey) obj;
-
+        if (obj instanceof MessageProducerConsumerKey otherKey) {
             if (!areEquals(getDestinationName(), otherKey.getDestinationName()))
                 return false;
             if (!areEquals(messageSelector, otherKey.messageSelector))
@@ -104,6 +102,7 @@ public class MessageProducerConsumerKey {
         else throw new IllegalArgumentException("unsupported destination: " + destination);
     }
 
+    @Override
     public int hashCode() {
         return hash(getDestinationName()) + hash(messageSelector) + hash(noLocal);
     }
@@ -114,6 +113,7 @@ public class MessageProducerConsumerKey {
         return o.hashCode();
     }
 
+    @Override
     public String toString() {
         return "a MessageProducerConsumerKey on " + destination +
                 (messageSelector == null ? "" : (" with selector '" + messageSelector) + "'") +
