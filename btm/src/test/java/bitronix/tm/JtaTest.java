@@ -20,19 +20,20 @@
  */
 package bitronix.tm;
 
-import bitronix.tm.utils.DefaultExceptionAnalyzer;
-import junit.framework.TestCase;
-
-import javax.transaction.*;
-
-import bitronix.tm.resource.jdbc.PoolingDataSource;
-import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
-import bitronix.tm.mock.resource.jdbc.MockDriver;
-
 import java.sql.Connection;
 
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.mock.resource.jdbc.MockDriver;
+import bitronix.tm.resource.jdbc.PoolingDataSource;
+import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
+import bitronix.tm.utils.DefaultExceptionAnalyzer;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.Transaction;
+import junit.framework.TestCase;
 
 /**
  *
@@ -44,12 +45,14 @@ public class JtaTest extends TestCase {
 
     private BitronixTransactionManager btm;
 
+    @Override
     protected void setUp() throws Exception {
         TransactionManagerServices.getConfiguration().setGracefulShutdownInterval(1);
         TransactionManagerServices.getConfiguration().setExceptionAnalyzer(DefaultExceptionAnalyzer.class.getName());
         btm = TransactionManagerServices.getTransactionManager();
     }
 
+    @Override
     protected void tearDown() throws Exception {
         btm.shutdown();
     }
@@ -236,13 +239,16 @@ public class JtaTest extends TestCase {
             this.transaction = transaction;
         }
 
+        @Override
         public void beforeCompletion() {
             try {
                 transaction.getSynchronizationScheduler().add(new Synchronization() {
 
+                    @Override
                     public void beforeCompletion() {
                     }
 
+                    @Override
                     public void afterCompletion(int i) {
                     }
                 }, 10);
@@ -251,6 +257,7 @@ public class JtaTest extends TestCase {
             }
         }
 
+        @Override
         public void afterCompletion(int i) {
         }
     }
@@ -259,10 +266,12 @@ public class JtaTest extends TestCase {
         public int beforeCount = 0;
         public int afterCount = 0;
 
+        @Override
         public void beforeCompletion() {
             beforeCount++;
         }
 
+        @Override
         public void afterCompletion(int i) {
             afterCount++;
         }

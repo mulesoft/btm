@@ -30,7 +30,7 @@ import bitronix.tm.TransactionManagerServices;
 import bitronix.tm.utils.Uid;
 import bitronix.tm.utils.UidGenerator;
 
-import javax.transaction.Status;
+import jakarta.transaction.Status;
 
 /**
  *

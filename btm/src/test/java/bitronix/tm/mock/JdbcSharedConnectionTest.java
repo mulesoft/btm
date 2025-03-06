@@ -24,12 +24,13 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.util.ArrayList;
 
-import javax.transaction.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.slf4j.*;
-
-import bitronix.tm.*;
+import bitronix.tm.BitronixTransactionManager;
+import bitronix.tm.TransactionManagerServices;
 import bitronix.tm.resource.jdbc.JdbcConnectionHandle;
+import jakarta.transaction.Transaction;
 
 /**
  *

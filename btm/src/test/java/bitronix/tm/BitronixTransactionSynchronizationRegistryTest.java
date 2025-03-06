@@ -20,9 +20,10 @@
  */
 package bitronix.tm;
 
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 import junit.framework.TestCase;
-
-import javax.transaction.*;
 
 /**
  *
@@ -32,10 +33,12 @@ public class BitronixTransactionSynchronizationRegistryTest extends TestCase {
 
     private BitronixTransactionManager btm;
 
+    @Override
     protected void setUp() throws Exception {
         btm = TransactionManagerServices.getTransactionManager();
     }
 
+    @Override
     protected void tearDown() throws Exception {
         if (btm.getStatus() != Status.STATUS_NO_TRANSACTION)
             btm.rollback();
@@ -51,6 +54,7 @@ public class BitronixTransactionSynchronizationRegistryTest extends TestCase {
         btm.commit();
 
         Thread t = new Thread() {
+            @Override
             public void run() {
                 try {
                     btm.begin();
@@ -126,6 +130,7 @@ public class BitronixTransactionSynchronizationRegistryTest extends TestCase {
             return afterTimestamp;
         }
 
+        @Override
         public void beforeCompletion() {
             beforeTimestamp = System.currentTimeMillis();
             try {
@@ -135,6 +140,7 @@ public class BitronixTransactionSynchronizationRegistryTest extends TestCase {
             }
         }
 
+        @Override
         public void afterCompletion(int status) {
             afterTimestamp = System.currentTimeMillis();
             try {

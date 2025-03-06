@@ -20,19 +20,29 @@
  */
 package bitronix.tm.mock;
 
-import bitronix.tm.BitronixTransactionManager;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.mock.events.*;
-import bitronix.tm.resource.common.XAPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.transaction.Status;
-import javax.transaction.Transaction;
-import javax.transaction.xa.XAResource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+
+import javax.transaction.xa.XAResource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.BitronixTransactionManager;
+import bitronix.tm.TransactionManagerServices;
+import bitronix.tm.mock.events.ConnectionDequeuedEvent;
+import bitronix.tm.mock.events.ConnectionQueuedEvent;
+import bitronix.tm.mock.events.EventRecorder;
+import bitronix.tm.mock.events.JournalLogEvent;
+import bitronix.tm.mock.events.XAResourceCommitEvent;
+import bitronix.tm.mock.events.XAResourceEndEvent;
+import bitronix.tm.mock.events.XAResourceIsSameRmEvent;
+import bitronix.tm.mock.events.XAResourcePrepareEvent;
+import bitronix.tm.mock.events.XAResourceStartEvent;
+import bitronix.tm.resource.common.XAPool;
+import jakarta.transaction.Status;
+import jakarta.transaction.Transaction;
 
 /**
  *

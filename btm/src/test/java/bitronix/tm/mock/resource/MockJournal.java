@@ -26,7 +26,7 @@ import bitronix.tm.journal.TransactionLogRecord;
 import bitronix.tm.mock.events.EventRecorder;
 import bitronix.tm.mock.events.JournalLogEvent;
 
-import javax.transaction.Status;
+import jakarta.transaction.Status;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;

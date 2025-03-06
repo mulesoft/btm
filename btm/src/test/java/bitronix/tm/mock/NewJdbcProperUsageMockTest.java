@@ -20,24 +20,53 @@
  */
 package bitronix.tm.mock;
 
-import java.io.*;
-import java.lang.reflect.*;
-import java.sql.*;
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.sql.XAConnection;
-import javax.transaction.*;
-import javax.transaction.xa.*;
+import javax.transaction.xa.XAException;
+import javax.transaction.xa.XAResource;
 
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import bitronix.tm.*;
-import bitronix.tm.mock.events.*;
+import bitronix.tm.BitronixTransaction;
+import bitronix.tm.BitronixTransactionManager;
+import bitronix.tm.TransactionManagerServices;
+import bitronix.tm.mock.NewJdbcProperUsageMockTest.LooseTransactionThread;
+import bitronix.tm.mock.events.ConnectionDequeuedEvent;
+import bitronix.tm.mock.events.ConnectionQueuedEvent;
+import bitronix.tm.mock.events.Event;
+import bitronix.tm.mock.events.EventRecorder;
+import bitronix.tm.mock.events.JournalLogEvent;
+import bitronix.tm.mock.events.LocalCommitEvent;
+import bitronix.tm.mock.events.XAResourceCommitEvent;
+import bitronix.tm.mock.events.XAResourceEndEvent;
+import bitronix.tm.mock.events.XAResourceIsSameRmEvent;
+import bitronix.tm.mock.events.XAResourcePrepareEvent;
+import bitronix.tm.mock.events.XAResourceRollbackEvent;
+import bitronix.tm.mock.events.XAResourceStartEvent;
 import bitronix.tm.mock.resource.MockXAResource;
 import bitronix.tm.mock.resource.jdbc.MockDriver;
 import bitronix.tm.resource.common.XAPool;
-import bitronix.tm.resource.jdbc.*;
+import bitronix.tm.resource.jdbc.JdbcConnectionHandle;
+import bitronix.tm.resource.jdbc.JdbcPooledConnection;
+import bitronix.tm.resource.jdbc.PoolingDataSource;
 import bitronix.tm.resource.jdbc.lrc.LrcXADataSource;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.SystemException;
+import jakarta.transaction.Transaction;
+import jakarta.transaction.UserTransaction;
 
 /**
  *
@@ -500,6 +529,7 @@ public class NewJdbcProperUsageMockTest extends AbstractMockJdbcTest {
         if (log.isDebugEnabled()) log.debug("*** after begin");
 
         tm.getTransaction().registerSynchronization(new Synchronization() {
+            @Override
             public void beforeCompletion() {
                 try {
                     if (log.isDebugEnabled()) log.debug("**** before setRollbackOnly");
@@ -509,6 +539,7 @@ public class NewJdbcProperUsageMockTest extends AbstractMockJdbcTest {
                     throw new RuntimeException("could not setRollbackOnly", ex);
                 }
             }
+            @Override
             public void afterCompletion(int status) {
             }
         });
@@ -1013,6 +1044,7 @@ public class NewJdbcProperUsageMockTest extends AbstractMockJdbcTest {
             this.poolingDataSource = poolingDataSource;
         }
 
+        @Override
         public void run() {
             try {
                 UserTransaction ut = TransactionManagerServices.getTransactionManager();

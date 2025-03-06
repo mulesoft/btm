@@ -24,7 +24,7 @@ import bitronix.tm.journal.TransactionLogHeader;
 import bitronix.tm.resource.common.XAStatefulHolder;
 import bitronix.tm.internal.XAResourceHolderState;
 
-import javax.transaction.Status;
+import jakarta.transaction.Status;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import java.util.Collection;

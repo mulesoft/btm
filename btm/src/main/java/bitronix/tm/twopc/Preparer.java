@@ -20,20 +20,27 @@
  */
 package bitronix.tm.twopc;
 
-import bitronix.tm.BitronixTransaction;
-import bitronix.tm.TransactionManagerServices;
-import bitronix.tm.utils.Decoder;
-import bitronix.tm.internal.*;
-import bitronix.tm.twopc.executor.Executor;
-import bitronix.tm.twopc.executor.Job;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.transaction.xa.XAException;
+import javax.transaction.xa.XAResource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.transaction.Status;
-import javax.transaction.RollbackException;
-import javax.transaction.xa.XAException;
-import javax.transaction.xa.XAResource;
-import java.util.*;
+import bitronix.tm.BitronixTransaction;
+import bitronix.tm.TransactionManagerServices;
+import bitronix.tm.internal.BitronixRollbackException;
+import bitronix.tm.internal.BitronixSystemException;
+import bitronix.tm.internal.XAResourceHolderState;
+import bitronix.tm.internal.XAResourceManager;
+import bitronix.tm.twopc.executor.Executor;
+import bitronix.tm.twopc.executor.Job;
+import bitronix.tm.utils.Decoder;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.Status;
 
 /**
  * Phase 1 Prepare logic engine.
@@ -146,6 +153,7 @@ public final class Preparer extends AbstractPhaseEngine {
             super(resourceHolder);
         }
 
+        @Override
         public void execute() {
             try {
                 XAResourceHolderState resourceHolder = getResource();

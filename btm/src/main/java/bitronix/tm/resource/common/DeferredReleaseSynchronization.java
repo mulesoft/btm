@@ -23,7 +23,7 @@ package bitronix.tm.resource.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.transaction.Synchronization;
+import jakarta.transaction.Synchronization;
 
 /**
  * {@link Synchronization} used to release a {@link XAStatefulHolder} object after 2PC has executed.
