@@ -20,15 +20,17 @@
  */
 package bitronix.tm.resource.messaging;
 
+import java.util.Hashtable;
+import java.util.Properties;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+
 import jakarta.jms.JMSException;
 import jakarta.jms.XAConnection;
 import jakarta.jms.XAConnectionFactory;
 import jakarta.jms.XAJMSContext;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import java.util.Hashtable;
-import java.util.Properties;
 
 /**
  * {@link XAConnectionFactory} implementation that wraps another {@link XAConnectionFactory} implementation available

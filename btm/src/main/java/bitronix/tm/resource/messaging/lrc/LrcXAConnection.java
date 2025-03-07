@@ -21,7 +21,17 @@
 package bitronix.tm.resource.messaging.lrc;
 
 
-import jakarta.jms.*;
+import jakarta.jms.Connection;
+import jakarta.jms.ConnectionConsumer;
+import jakarta.jms.ConnectionMetaData;
+import jakarta.jms.Destination;
+import jakarta.jms.ExceptionListener;
+import jakarta.jms.JMSException;
+import jakarta.jms.ServerSessionPool;
+import jakarta.jms.Session;
+import jakarta.jms.Topic;
+import jakarta.jms.XAConnection;
+import jakarta.jms.XASession;
 
 /**
  * XAConnection implementation for a non-XA JMS resource emulating XA with Last Resource Commit.
@@ -36,10 +46,12 @@ public class LrcXAConnection implements XAConnection {
         this.nonXaConnection = connection;
     }
 
+    @Override
     public XASession createXASession() throws JMSException {
         return new LrcXASession(nonXaConnection.createSession(true, Session.AUTO_ACKNOWLEDGE));
     }
 
+    @Override
     public Session createSession(boolean transacted, int acknowledgeMode) throws JMSException {
         throw new JMSException(LrcXAConnection.class.getName() + " can only respond to createXASession()");
     }
@@ -83,34 +95,42 @@ public class LrcXAConnection implements XAConnection {
         return nonXaConnection.getClientID();
     }
 
+    @Override
     public void setClientID(String clientID) throws JMSException {
         nonXaConnection.setClientID(clientID);
     }
 
+    @Override
     public ConnectionMetaData getMetaData() throws JMSException {
         return nonXaConnection.getMetaData();
     }
 
+    @Override
     public ExceptionListener getExceptionListener() throws JMSException {
         return nonXaConnection.getExceptionListener();
     }
 
+    @Override
     public void setExceptionListener(ExceptionListener exceptionListener) throws JMSException {
         nonXaConnection.setExceptionListener(exceptionListener);
     }
 
+    @Override
     public void start() throws JMSException {
         nonXaConnection.start();
     }
 
+    @Override
     public void stop() throws JMSException {
         nonXaConnection.stop();
     }
 
+    @Override
     public void close() throws JMSException {
         nonXaConnection.close();
     }
 
+    @Override
     public String toString() {
         return "a JMS LrcXAConnection on " + nonXaConnection;
     }

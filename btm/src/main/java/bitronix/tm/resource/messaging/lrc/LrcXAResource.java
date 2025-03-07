@@ -20,16 +20,17 @@
  */
 package bitronix.tm.resource.messaging.lrc;
 
-import bitronix.tm.internal.BitronixXAException;
-import bitronix.tm.utils.Decoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import jakarta.jms.JMSException;
-import jakarta.jms.Session;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.internal.BitronixXAException;
+import bitronix.tm.utils.Decoder;
+import jakarta.jms.JMSException;
+import jakarta.jms.Session;
 
 /**
  * XAResource implementation for a non-XA JMS connection emulating XA with Last Resource Commit.
@@ -83,19 +84,21 @@ public class LrcXAResource implements XAResource {
     }
 
     private String xlatedState() {
-        switch (state) {
-            case NO_TX: return "NO_TX";
-            case STARTED: return "STARTED";
-            case ENDED: return "ENDED";
-            case PREPARED: return "PREPARED";
-            default: return "!invalid state (" + state + ")!";
-        }
+        return switch (state) {
+          case NO_TX -> "NO_TX";
+          case STARTED -> "STARTED";
+          case ENDED -> "ENDED";
+          case PREPARED -> "PREPARED";
+          default -> "!invalid state (" + state + ")!";
+        };
     }
 
+    @Override
     public int getTransactionTimeout() throws XAException {
         return 0;
     }
 
+    @Override
     public boolean setTransactionTimeout(int seconds) throws XAException {
         return false;
     }
@@ -103,10 +106,12 @@ public class LrcXAResource implements XAResource {
     public void forget(Xid xid) throws XAException {
     }
 
+    @Override
     public Xid[] recover(int flags) throws XAException {
         return new Xid[0];
     }
 
+    @Override
     public boolean isSameRM(XAResource xaResource) throws XAException {
         return xaResource == this;
     }
@@ -287,6 +292,7 @@ public class LrcXAResource implements XAResource {
         }
     }
 
+    @Override
     public String toString() {
         return "a JMS LrcXAResource in state " + xlatedState() + " of session " + session;
     }

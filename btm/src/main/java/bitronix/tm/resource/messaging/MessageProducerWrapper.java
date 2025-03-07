@@ -21,15 +21,13 @@
 package bitronix.tm.resource.messaging;
 
 import bitronix.tm.resource.common.TransactionContextHelper;
-
 import jakarta.jms.CompletionListener;
 import jakarta.jms.Destination;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.MessageProducer;
-
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.SystemException;
 
 /**
  * {@link MessageProducer} wrapper that adds XA enlistment semantics.

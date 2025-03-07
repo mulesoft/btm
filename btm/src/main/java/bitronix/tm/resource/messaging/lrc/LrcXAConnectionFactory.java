@@ -20,16 +20,15 @@
  */
 package bitronix.tm.resource.messaging.lrc;
 
+import java.util.Properties;
+
 import bitronix.tm.utils.ClassLoaderUtils;
 import bitronix.tm.utils.PropertyUtils;
-
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.JMSException;
 import jakarta.jms.XAConnection;
 import jakarta.jms.XAConnectionFactory;
 import jakarta.jms.XAJMSContext;
-
-import java.util.Properties;
 
 /**
  * XAConnectionFactory implementation for a non-XA JMS resource emulating XA with Last Resource Commit.
@@ -60,6 +59,7 @@ public class LrcXAConnectionFactory implements XAConnectionFactory {
         this.properties = properties;
     }
 
+    @Override
     public XAConnection createXAConnection() throws JMSException {
         try {
             Class clazz = ClassLoaderUtils.loadClass(connectionFactoryClassName);
@@ -72,6 +72,7 @@ public class LrcXAConnectionFactory implements XAConnectionFactory {
         }
     }
 
+    @Override
     public XAConnection createXAConnection(String user, String password) throws JMSException {
         try {
             Class clazz = ClassLoaderUtils.loadClass(connectionFactoryClassName);

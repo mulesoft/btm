@@ -20,21 +20,6 @@
  */
 package bitronix.tm.resource.messaging;
 
-import bitronix.tm.internal.BitronixSystemException;
-import bitronix.tm.resource.common.*;
-import bitronix.tm.resource.messaging.lrc.LrcXAConnectionFactory;
-import bitronix.tm.utils.Decoder;
-import bitronix.tm.utils.ManagementRegistrar;
-import bitronix.tm.utils.MonotonicClock;
-import bitronix.tm.utils.Scheduler;
-import jakarta.jms.JMSException;
-import jakarta.jms.Session;
-import jakarta.jms.TemporaryQueue;
-import jakarta.jms.XAConnection;
-import jakarta.jms.XASession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -45,6 +30,27 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bitronix.tm.internal.BitronixSystemException;
+import bitronix.tm.resource.common.AbstractXAStatefulHolder;
+import bitronix.tm.resource.common.RecoveryXAResourceHolder;
+import bitronix.tm.resource.common.StateChangeListener;
+import bitronix.tm.resource.common.TransactionContextHelper;
+import bitronix.tm.resource.common.XAResourceHolder;
+import bitronix.tm.resource.common.XAStatefulHolder;
+import bitronix.tm.resource.messaging.lrc.LrcXAConnectionFactory;
+import bitronix.tm.utils.Decoder;
+import bitronix.tm.utils.ManagementRegistrar;
+import bitronix.tm.utils.MonotonicClock;
+import bitronix.tm.utils.Scheduler;
+import jakarta.jms.JMSException;
+import jakarta.jms.Session;
+import jakarta.jms.TemporaryQueue;
+import jakarta.jms.XAConnection;
+import jakarta.jms.XASession;
 
 /**
  * Implementation of a JMS pooled connection wrapping vendor's {@link XAConnection} implementation.
