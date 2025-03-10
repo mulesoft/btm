@@ -41,10 +41,12 @@
         <javaTransactionApiVersion>2.0.1</javaTransactionApiVersion>
         <jakarta.cdi.version>3.0.0</jakarta.cdi.version>
         <jakarta.interceptor.version>2.1.0</jakarta.interceptor.version>
-        <javaxJmsApiVersion>2.0.1</javaxJmsApiVersion>
+        <jakartaJmsApiVersion>3.1.0</jakartaJmsApiVersion>
+        <javaxJmsApiVersion>2.0.3</javaxJmsApiVersion>
     </properties>
 
     <modules>
+        <module>jms-api</module>
         <module>btm</module>
         <module>btm-jetty6-lifecycle</module>
         <module>btm-jetty7-lifecycle</module>
@@ -106,7 +108,7 @@
             <dependency>
               <groupId>jakarta.jms</groupId>
               <artifactId>jakarta.jms-api</artifactId>
-              <version>3.1.0</version>
+              <version>${jakartaJmsApiVersion}</version>
             </dependency>
             <dependency>
                 <groupId>jakarta.interceptor</groupId>
@@ -114,11 +116,6 @@
                 <version>${jakarta.interceptor.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>javax.jms</groupId>
-                <artifactId>javax.jms-api</artifactId>
-                <version>${javaxJmsApiVersion}</version>
-            </dependency>
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
