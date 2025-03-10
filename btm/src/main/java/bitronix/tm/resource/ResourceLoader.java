@@ -131,12 +131,13 @@ public class ResourceLoader implements Service {
         // transaction manager service and 3rd party libraries like the JMS ones.
         // This allows using the TM with a 100% JDBC application without requiring JMS libraries.
         if (XADataSource.class.isAssignableFrom(clazz)) {
-          return (XAResourceProducer) ClassLoaderUtils.loadClass(JDBC_RESOURCE_CLASSNAME).getConstructor().newInstance();
+            return (XAResourceProducer) ClassLoaderUtils.loadClass(JDBC_RESOURCE_CLASSNAME).getConstructor().newInstance();
         }
         else if (XAConnectionFactory.class.isAssignableFrom(clazz)) {
-          return (XAResourceProducer) ClassLoaderUtils.loadClass(JMS_RESOURCE_CLASSNAME).getConstructor().newInstance();
-        } else if (jakarta.jms.XAConnectionFactory.class.isAssignableFrom(clazz)) {
-          return (XAResourceProducer) ClassLoaderUtils.loadClass(MESSAGING_RESOURCE_CLASSNAME).getConstructor().newInstance();
+            return (XAResourceProducer) ClassLoaderUtils.loadClass(JMS_RESOURCE_CLASSNAME).getConstructor().newInstance();
+        }
+        else if (jakarta.jms.XAConnectionFactory.class.isAssignableFrom(clazz)) {
+            return (XAResourceProducer) ClassLoaderUtils.loadClass(MESSAGING_RESOURCE_CLASSNAME).getConstructor().newInstance();
         }
         else
             return null;

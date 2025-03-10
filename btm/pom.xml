@@ -25,9 +25,9 @@
         </dependency>
 
         <dependency>
-		    <groupId>org.mule.btm.jms</groupId>
-		    <artifactId>jakarta.jms-api-${javaxJmsApiVersion}</artifactId>
-		    <version>${project.version}</version>
+            <groupId>org.mule.btm.jms</groupId>
+            <artifactId>jakarta.jms-api-${javaxJmsApiVersion}</artifactId>
+            <version>${project.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
