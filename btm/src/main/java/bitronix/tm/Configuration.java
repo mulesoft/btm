@@ -126,7 +126,7 @@ public class Configuration implements Service {
             currentNodeOnlyRecovery = getBoolean(properties, PROPERTY_PREFIX + ".currentNodeOnlyRecovery", true);
             allowMultipleLrc = getBoolean(properties, PROPERTY_PREFIX + ".allowMultipleLrc", false);
             resourceConfigurationFilename = getString(properties, PROPERTY_PREFIX + ".resource.configuration", null);
-            disableRecovery = getBoolean(properties, PROPERTY_PREFIX + ".recovery.diable", false);
+            disableRecovery = getBoolean(properties, PROPERTY_PREFIX + ".recovery.disable", false);
         } catch (IOException ex) {
             throw new InitializationException("error loading configuration", ex);
         }
