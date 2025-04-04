@@ -79,6 +79,7 @@ public class Configuration implements Service {
     private volatile boolean currentNodeOnlyRecovery;
     private volatile boolean allowMultipleLrc;
     private volatile String resourceConfigurationFilename;
+    private volatile boolean disableRecovery;
 
 
     protected Configuration() {
@@ -125,6 +126,7 @@ public class Configuration implements Service {
             currentNodeOnlyRecovery = getBoolean(properties, PROPERTY_PREFIX + ".currentNodeOnlyRecovery", true);
             allowMultipleLrc = getBoolean(properties, PROPERTY_PREFIX + ".allowMultipleLrc", false);
             resourceConfigurationFilename = getString(properties, PROPERTY_PREFIX + ".resource.configuration", null);
+            disableRecovery = getBoolean(properties, PROPERTY_PREFIX + ".recovery.disable", false);
         } catch (IOException ex) {
             throw new InitializationException("error loading configuration", ex);
         }
@@ -642,6 +644,27 @@ public class Configuration implements Service {
     public Configuration setResourceConfigurationFilename(String resourceConfigurationFilename) {
         checkNotStarted();
         this.resourceConfigurationFilename = resourceConfigurationFilename;
+        return this;
+    }
+    
+    /**
+     * Useful for debugging with less noise.
+     * @return whether recovery is disabled or not.
+     * @since 3.0
+     */
+    public boolean isDisableRecovery() {
+        return disableRecovery;
+    }
+    
+    /**
+     * Useful for debugging with less noise.
+     * @param disableRecovery whether recovery is disabled or not.
+     * @return this.
+     * @since 3.0
+     */
+    public Configuration setDisableRecovery(boolean disableRecovery) {
+        checkNotStarted();
+        this.disableRecovery = disableRecovery;
         return this;
     }
 

@@ -30,6 +30,21 @@ import javax.naming.NamingException;
 import javax.naming.Reference;
 import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
+import javax.transaction.xa.XAException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import bitronix.tm.internal.BitronixSystemException;
+import bitronix.tm.internal.ThreadContext;
+import bitronix.tm.internal.XAResourceManager;
+import bitronix.tm.utils.Decoder;
+import bitronix.tm.utils.InitializationException;
+import bitronix.tm.utils.MonotonicClock;
+import bitronix.tm.utils.Scheduler;
+import bitronix.tm.utils.Service;
+import bitronix.tm.utils.Uid;
 import jakarta.transaction.HeuristicMixedException;
 import jakarta.transaction.HeuristicRollbackException;
 import jakarta.transaction.InvalidTransactionException;
@@ -41,20 +56,6 @@ import jakarta.transaction.SystemException;
 import jakarta.transaction.Transaction;
 import jakarta.transaction.TransactionManager;
 import jakarta.transaction.UserTransaction;
-import javax.transaction.xa.XAException;
-
-import bitronix.tm.internal.BitronixSystemException;
-import bitronix.tm.internal.ThreadContext;
-import bitronix.tm.internal.XAResourceManager;
-import bitronix.tm.utils.Decoder;
-import bitronix.tm.utils.InitializationException;
-import bitronix.tm.utils.MonotonicClock;
-import bitronix.tm.utils.Scheduler;
-import bitronix.tm.utils.Service;
-import bitronix.tm.utils.Uid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /**
  * Implementation of {@link TransactionManager} and {@link UserTransaction}.
@@ -85,16 +86,20 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
             if (log.isDebugEnabled()) log.debug("starting BitronixTransactionManager using " + configuration);
             TransactionManagerServices.getJournal().open();
             TransactionManagerServices.getResourceLoader().init();
-            TransactionManagerServices.getRecoverer().run();
-
-            int backgroundRecoveryInterval = TransactionManagerServices.getConfiguration().getBackgroundRecoveryIntervalSeconds();
-            if (backgroundRecoveryInterval < 1) {
-                throw new InitializationException("invalid configuration value for backgroundRecoveryIntervalSeconds, found '" + backgroundRecoveryInterval + "' but it must be greater than 0");
+            if (!configuration.isDisableRecovery()) {
+                TransactionManagerServices.getRecoverer().run();
+  
+                int backgroundRecoveryInterval = TransactionManagerServices.getConfiguration().getBackgroundRecoveryIntervalSeconds();
+                if (backgroundRecoveryInterval < 1) {
+                    throw new InitializationException("invalid configuration value for backgroundRecoveryIntervalSeconds, found '" + backgroundRecoveryInterval + "' but it must be greater than 0");
+                }
+  
+                if (log.isDebugEnabled()) {
+                    log.debug("recovery will run in the background every " + backgroundRecoveryInterval + " second(s)");
+                }
+                Date nextExecutionDate = new Date(MonotonicClock.currentTimeMillis() + (backgroundRecoveryInterval * 1000L));
+                TransactionManagerServices.getTaskScheduler().scheduleRecovery(TransactionManagerServices.getRecoverer(), nextExecutionDate);
             }
-
-            if (log.isDebugEnabled()) log.debug("recovery will run in the background every " + backgroundRecoveryInterval + " second(s)");
-            Date nextExecutionDate = new Date(MonotonicClock.currentTimeMillis() + (backgroundRecoveryInterval * 1000L));
-            TransactionManagerServices.getTaskScheduler().scheduleRecovery(TransactionManagerServices.getRecoverer(), nextExecutionDate);
         } catch (IOException ex) {
             throw new InitializationException("cannot open disk journal", ex);
         } catch (Exception ex) {
@@ -109,6 +114,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
      * @throws NotSupportedException if a transaction is already bound to the calling thread.
      * @throws SystemException if the transaction manager is shutting down.
      */
+    @Override
     public void begin() throws NotSupportedException, SystemException {
         if (log.isDebugEnabled()) log.debug("beginning a new transaction");
         if (isShuttingDown())
@@ -135,6 +141,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         }
     }
 
+    @Override
     public void commit() throws RollbackException, HeuristicMixedException, HeuristicRollbackException, SecurityException, IllegalStateException, SystemException {
         BitronixTransaction currentTx = getCurrentTransaction();
         if (log.isDebugEnabled()) log.debug("committing transaction " + currentTx);
@@ -144,6 +151,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         currentTx.commit();
     }
 
+    @Override
     public void rollback() throws IllegalStateException, SecurityException, SystemException {
         BitronixTransaction currentTx = getCurrentTransaction();
         if (log.isDebugEnabled()) log.debug("rolling back transaction " + currentTx);
@@ -153,6 +161,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         currentTx.rollback();
     }
 
+    @Override
     public int getStatus() throws SystemException {
         BitronixTransaction currentTx = getCurrentTransaction();
         if (currentTx == null)
@@ -161,10 +170,12 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         return currentTx.getStatus();
     }
 
+    @Override
     public Transaction getTransaction() throws SystemException {
         return getCurrentTransaction();
     }
 
+    @Override
     public void setRollbackOnly() throws IllegalStateException, SystemException {
         BitronixTransaction currentTx = getCurrentTransaction();
         if (log.isDebugEnabled()) log.debug("marking transaction as rollback only: " + currentTx);
@@ -174,12 +185,14 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         currentTx.setRollbackOnly();
     }
 
+    @Override
     public void setTransactionTimeout(int seconds) throws SystemException {
         if (seconds < 0)
             throw new BitronixSystemException("cannot set a timeout to less than 0 second (was: " + seconds + "s)");
         getOrCreateCurrentContext().setTimeout(seconds);
     }
 
+    @Override
     public Transaction suspend() throws SystemException {
         BitronixTransaction currentTx = getCurrentTransaction();
         if (log.isDebugEnabled()) log.debug("suspending transaction " + currentTx);
@@ -197,14 +210,14 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         }
     }
 
+    @Override
     public void resume(Transaction transaction) throws InvalidTransactionException, IllegalStateException, SystemException {
         if (log.isDebugEnabled()) log.debug("resuming " + transaction);
         if (transaction == null)
             throw new InvalidTransactionException("resumed transaction cannot be null");
-        if (!(transaction instanceof BitronixTransaction))
+        if (!(transaction instanceof BitronixTransaction tx))
             throw new InvalidTransactionException("resumed transaction must be an instance of BitronixTransaction");
 
-        BitronixTransaction tx = (BitronixTransaction) transaction;
         BitronixTransaction currentTx = getCurrentTransaction();
         if (currentTx != null)
             throw new IllegalStateException("a transaction is already running on this thread");
@@ -230,6 +243,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
      *
      * @return an empty reference to get the BitronixTransactionManager.
      */
+    @Override
     public Reference getReference() throws NamingException {
         return new Reference(
                 BitronixTransactionManager.class.getName(),
@@ -312,6 +326,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
      * {@link jakarta.transaction.TransactionManager#begin()}) will be rejected with a {@link SystemException}.</p>
      * @see Configuration#getGracefulShutdownInterval()
      */
+    @Override
     public synchronized void shutdown() {
         if (isShuttingDown()) {
             if (log.isDebugEnabled()) log.debug("Transaction Manager has already shut down");
@@ -376,6 +391,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
         }
     }
 
+    @Override
     public String toString() {
         return "a BitronixTransactionManager with " + inFlightTransactions.size() + " in-flight transaction(s)";
     }
@@ -457,9 +473,11 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
             this.currentTx = currentTx;
         }
 
+        @Override
         public void beforeCompletion() {
         }
 
+        @Override
         public void afterCompletion(int status) {
             Iterator<Map.Entry<Thread, ThreadContext>> it = contexts.entrySet().iterator();
             while (it.hasNext()) {
@@ -475,6 +493,7 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
             MDC.remove(MDC_GTRID_KEY);
         }
 
+        @Override
         public String toString() {
             return "a ClearContextSynchronization for " + currentTx;
         }
