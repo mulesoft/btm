@@ -87,16 +87,18 @@ public class BitronixTransactionManager implements TransactionManager, UserTrans
             TransactionManagerServices.getJournal().open();
             TransactionManagerServices.getResourceLoader().init();
             if (!configuration.isDisableRecovery()) {
-              TransactionManagerServices.getRecoverer().run();
+                TransactionManagerServices.getRecoverer().run();
   
-              int backgroundRecoveryInterval = TransactionManagerServices.getConfiguration().getBackgroundRecoveryIntervalSeconds();
-              if (backgroundRecoveryInterval < 1) {
-                  throw new InitializationException("invalid configuration value for backgroundRecoveryIntervalSeconds, found '" + backgroundRecoveryInterval + "' but it must be greater than 0");
-              }
+                int backgroundRecoveryInterval = TransactionManagerServices.getConfiguration().getBackgroundRecoveryIntervalSeconds();
+                if (backgroundRecoveryInterval < 1) {
+                    throw new InitializationException("invalid configuration value for backgroundRecoveryIntervalSeconds, found '" + backgroundRecoveryInterval + "' but it must be greater than 0");
+                }
   
-              if (log.isDebugEnabled()) log.debug("recovery will run in the background every " + backgroundRecoveryInterval + " second(s)");
-              Date nextExecutionDate = new Date(MonotonicClock.currentTimeMillis() + (backgroundRecoveryInterval * 1000L));
-              TransactionManagerServices.getTaskScheduler().scheduleRecovery(TransactionManagerServices.getRecoverer(), nextExecutionDate);
+                if (log.isDebugEnabled()) {
+                    log.debug("recovery will run in the background every " + backgroundRecoveryInterval + " second(s)");
+                }
+                Date nextExecutionDate = new Date(MonotonicClock.currentTimeMillis() + (backgroundRecoveryInterval * 1000L));
+                TransactionManagerServices.getTaskScheduler().scheduleRecovery(TransactionManagerServices.getRecoverer(), nextExecutionDate);
             }
         } catch (IOException ex) {
             throw new InitializationException("cannot open disk journal", ex);
