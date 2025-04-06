@@ -132,9 +132,11 @@ public class JdbcPooledConnection extends AbstractXAResourceHolder implements St
             }
         } catch (Exception ex) {
             jdbcVersionDetected = 3;
+            log.debug("Detected jdbc3 due to exception",ex);
         } catch (AbstractMethodError er) {
             // this happens if the driver implements JDBC 3 but runs on JDK 1.6+ (which embeds the JDBC 4 interfaces)
             jdbcVersionDetected = 3;
+            log.debug("Detected jdbc3 due to AbstractMethodError",er);
         }
         if (log.isDebugEnabled()) log.debug("detected JDBC connection class '" + connection.getClass() + "' is version " + jdbcVersionDetected + " type");
     }
