@@ -179,7 +179,9 @@ public class XAResourceHolderState {
         } finally {
             this.suspended = suspended;
             this.ended = ended;
-            this.started = false;
+            if (ended) {
+            	this.started = false;
+            }
         }
     }
 

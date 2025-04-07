@@ -23,6 +23,7 @@ package bitronix.tm.mock;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.transaction.*;
 
@@ -47,17 +48,19 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
         tm.begin();
         if (log.isDebugEnabled()) log.debug("*** after begin");
 
-        final Transaction suspended = tm.suspend();
+        final AtomicReference<Transaction> suspended = new AtomicReference<Transaction>(tm.suspend());
 
         final ArrayList twoConnections = new ArrayList();
         Thread thread1 = new Thread() {
         	public void run() {
         		try {
-					tm.resume(suspended);
+					tm.resume(suspended.get());
 			        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
 			        Connection connection = poolingDataSource1.getConnection();
 			        connection.createStatement();
 			        twoConnections.add(connection);
+			        // remove transaction from the ThreadLocal
+			        suspended.set(tm.suspend());
 				} catch (Exception e) {
 					e.printStackTrace();
 					fail(e.getMessage());
@@ -70,7 +73,7 @@ public class JdbcSharedConnectionTest extends AbstractMockJdbcTest {
         Thread thread2 = new Thread() {
         	public void run() {
         		try {
-					tm.resume(suspended);
+					tm.resume(suspended.get());
 			        if (log.isDebugEnabled()) log.debug("*** getting connection from DS1");
 			        Connection connection = poolingDataSource1.getConnection();
 			        connection.createStatement();
