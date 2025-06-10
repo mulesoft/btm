@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.mule.btm</groupId>
         <artifactId>mule-btm-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.0.0-20250610</version>
     </parent>
     <groupId>org.mule.btm.jms</groupId>
     <artifactId>jakarta.jms-api-${javaxJmsApiVersion}</artifactId>

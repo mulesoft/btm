@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.mule.btm</groupId>
         <artifactId>mule-btm-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.0.0-20250610</version>
     </parent>
     <artifactId>mule-btm-jetty6-lifecycle</artifactId>
     <name>Bitronix Transaction Manager :: Jetty 6 lifecycle</name>
